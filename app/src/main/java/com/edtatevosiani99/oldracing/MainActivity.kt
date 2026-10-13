@@ -44,6 +44,8 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
     private var playerLane = 1
     private var speed = 105
     private var distance = 0f
+    private val prefs = context.getSharedPreferences("old_racing", Context.MODE_PRIVATE)
+    private var bestDistance = prefs.getInt("best_distance", 0)
     private var crashed = false
     private var twoWay = true
     private var selectedCar = 0
@@ -108,19 +110,19 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
             while(it.hasNext()) {
                 val car=it.next(); car.progress += dt*(.12f+speed/850f)
                 if(car.progress>1.15f) it.remove() else {
-                    drawCar(c,laneX(w,car.lane,car.progress),h*(.28f+car.progress*.72f),w*(.018f+car.progress*.035f),car.color,false)
+                    drawCar(c,laneX(w,if(twoWay) car.lane else car.lane+1,car.progress),h*(.28f+car.progress*.72f),w*(.018f+car.progress*.035f),car.color,false)
                     if(car.progress>.82f && car.progress<.99f && car.lane==playerLane) crashed=true
                 }
             }
         } else {
-            traffic.forEach { drawCar(c,laneX(w,it.lane,it.progress),h*(.28f+it.progress*.72f),w*(.018f+it.progress*.035f),it.color,false) }
+            traffic.forEach { drawCar(c,laneX(w,if(twoWay) it.lane else it.lane+1,it.progress),h*(.28f+it.progress*.72f),w*(.018f+it.progress*.035f),it.color,false) }
         }
         if (!menu) {
             playerLane=playerLane.coerceIn(0,if(twoWay)3 else 1)
-            drawCar(c,laneX(w,playerLane,.91f),h*.86f,w*.07f,carColors[selectedCar],true)
+            drawCar(c,laneX(w,if(twoWay) playerLane else playerLane+1,.91f),h*.86f,w*.07f,carColors[selectedCar],true)
             paint(Color.argb(150,0,0,0)); c.drawRoundRect(w*.02f,h*.03f,w*.32f,h*.18f,14f,14f,p)
             label(c,"$speed KM/H",w*.04f,h*.085f,h*.045f)
-            label(c,"DISTANCE  ${distance.toInt()} m",w*.04f,h*.145f,h*.032f)
+            label(c,"DISTANCE ${distance.toInt()} m  •  BEST $bestDistance m",w*.04f,h*.145f,h*.032f)
             button(c,w*.04f,h*.73f,w*.17f,h*.94f,"◀")
             button(c,w*.83f,h*.73f,w*.96f,h*.94f,"▶")
             button(c,w*.38f,h*.82f,w*.48f,h*.96f,"−")
@@ -162,6 +164,7 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
     }
     private fun drawCrash(c:Canvas,w:Float,h:Float) {
         paint(Color.argb(205,0,0,0)); c.drawRect(w*.25f,h*.25f,w*.75f,h*.75f,p)
+        if (distance.toInt() > bestDistance) { bestDistance = distance.toInt(); prefs.edit().putInt("best_distance", bestDistance).apply() }
         label(c,"CRASH!",w/2,h*.43f,h*.1f,Color.RED,true)
         label(c,"Distance: ${distance.toInt()} m",w/2,h*.53f,h*.045f,Color.WHITE,true)
         button(c,w*.39f,h*.60f,w*.61f,h*.71f,"RESTART")
