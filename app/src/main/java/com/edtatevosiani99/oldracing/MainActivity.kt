@@ -47,6 +47,7 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
     private val prefs = context.getSharedPreferences("old_racing", Context.MODE_PRIVATE)
     private var bestDistance = prefs.getInt("best_distance", 0)
     private var crashed = false
+    private var paused = false
     private var twoWay = true
     private var selectedCar = 0
     private var menu = true
@@ -103,7 +104,7 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
                 val dash=h*(.008f+t*.025f); c.drawRect(x-dash*.12f,y,x+dash*.12f,y+dash*1.7f,p)
             }
         }
-        if (!menu && !crashed) {
+        if (!menu && !crashed && !paused) {
             distance += speed*dt*.015f; spawnClock += dt
             if (spawnClock>.8f) { spawnClock=0f; traffic.add(TrafficCar(rnd.nextInt(if(twoWay)4 else 2),0f,trafficColors.random(rnd))) }
             val it=traffic.iterator()
@@ -129,7 +130,7 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
             button(c,w*.52f,h*.82f,w*.62f,h*.96f,"+")
             label(c,(if(twoWay)"TWO WAY" else "ONE WAY") + if(tiltEnabled) " • TILT ON" else "",w*.96f,h*.08f,h*.035f,Color.WHITE,true)
         }
-        if(menu) drawMenu(c,w,h) else if(crashed) drawCrash(c,w,h)
+        if(menu) drawMenu(c,w,h) else if(crashed) drawCrash(c,w,h) else if(paused) drawPause(c,w,h)
         postInvalidateOnAnimation()
     }
 
@@ -162,6 +163,11 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
         button(c,w*.52f,h*.71f,w*.70f,h*.84f,if(twoWay)"TWO WAY" else "ONE WAY")
         label(c,"Touch left/right to steer • tap top-left to toggle tilt",w/2,h*.94f,h*.027f,Color.LTGRAY,true)
     }
+    private fun drawPause(c:Canvas,w:Float,h:Float) {
+        paint(Color.argb(190,0,0,0)); c.drawRoundRect(w*.32f,h*.30f,w*.68f,h*.70f,18f,18f,p)
+        label(c,"PAUSED",w/2,h*.46f,h*.09f,Color.rgb(255,190,40),true)
+        label(c,"Tap to continue",w/2,h*.57f,h*.04f,Color.WHITE,true)
+    }
     private fun drawCrash(c:Canvas,w:Float,h:Float) {
         paint(Color.argb(205,0,0,0)); c.drawRect(w*.25f,h*.25f,w*.75f,h*.75f,p)
         if (distance.toInt() > bestDistance) { bestDistance = distance.toInt(); prefs.edit().putInt("best_distance", bestDistance).apply() }
@@ -176,11 +182,13 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
                 if(e.y>h*.39f && e.y<h*.68f) selectedCar=when { e.x<w*.38f->0; e.x<w*.62f->1; else->2 }
                 else if(e.y>h*.68f) {
                     if(e.x>w*.50f) twoWay=!twoWay else {
-                        menu=false; crashed=false; distance=0f; speed=105; playerLane=if(twoWay)1 else 0; traffic.clear()
+                        menu=false; crashed=false; paused=false; distance=0f; speed=105; playerLane=if(twoWay)1 else 0; traffic.clear()
                         repeat(4){traffic.add(TrafficCar(rnd.nextInt(if(twoWay)4 else 2),rnd.nextFloat()*.75f,trafficColors.random(rnd)))}
                     }
                 }
-            } else if(crashed) { menu=true }
+            } else if(crashed) { menu=true; paused=false }
+            else if(e.y<h*.20f && e.x>w*.72f) paused=!paused
+            else if(paused) paused=false
             else if(e.x<w*.25f && e.y<h*.22f) tiltEnabled=!tiltEnabled
             else if(e.x<w*.25f) playerLane=max(0,playerLane-1)
             else if(e.x>w*.75f) playerLane=min(if(twoWay)3 else 1,playerLane+1)
