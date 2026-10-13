@@ -88,7 +88,7 @@ private class RacingView(context: Context) : View(context) {
             drawCar(c,laneX(w,playerLane,.91f),h*.86f,w*.07f,carColors[selectedCar],true)
             paint(Color.argb(150,0,0,0)); c.drawRoundRect(w*.02f,h*.03f,w*.32f,h*.18f,14f,14f,p)
             label(c,"$speed KM/H",w*.04f,h*.085f,h*.045f)
-            label(c,"DISTANCE  \${distance.toInt()} m",w*.04f,h*.145f,h*.032f)
+            label(c,"DISTANCE  ${distance.toInt()} m",w*.04f,h*.145f,h*.032f)
             button(c,w*.04f,h*.73f,w*.17f,h*.94f,"◀")
             button(c,w*.83f,h*.73f,w*.96f,h*.94f,"▶")
             button(c,w*.38f,h*.82f,w*.48f,h*.96f,"−")
@@ -131,7 +131,7 @@ private class RacingView(context: Context) : View(context) {
     private fun drawCrash(c:Canvas,w:Float,h:Float) {
         paint(Color.argb(205,0,0,0)); c.drawRect(w*.25f,h*.25f,w*.75f,h*.75f,p)
         label(c,"CRASH!",w/2,h*.43f,h*.1f,Color.RED,true)
-        label(c,"Distance: \${distance.toInt()} m",w/2,h*.53f,h*.045f,Color.WHITE,true)
+        label(c,"Distance: ${distance.toInt()} m",w/2,h*.53f,h*.045f,Color.WHITE,true)
         button(c,w*.39f,h*.60f,w*.61f,h*.71f,"RESTART")
     }
     override fun onTouchEvent(e:MotionEvent):Boolean {
