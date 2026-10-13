@@ -10,6 +10,11 @@ import android.graphics.Path
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
@@ -25,7 +30,11 @@ class MainActivity : Activity() {
 
 private data class TrafficCar(var lane: Int, var progress: Float, var color: Int)
 
-private class RacingView(context: Context) : View(context) {
+private class RacingView(context: Context) : View(context), SensorEventListener {
+    private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    private val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+    private var tiltEnabled = false
+    private var tiltCooldown = 0L
     private val p = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rnd = Random(System.currentTimeMillis())
     private val traffic = mutableListOf<TrafficCar>()
@@ -41,6 +50,29 @@ private class RacingView(context: Context) : View(context) {
     private var menu = true
     private var spawnClock = 0f
     private var lastTime = System.currentTimeMillis()
+
+    init { isFocusable = true }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        accelerometer?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
+    }
+    override fun onDetachedFromWindow() {
+        sensorManager.unregisterListener(this)
+        super.onDetachedFromWindow()
+    }
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+    override fun onSensorChanged(event: SensorEvent) {
+        if (!tiltEnabled || menu || crashed || event.sensor.type != Sensor.TYPE_ACCELEROMETER) return
+        val now = System.currentTimeMillis()
+        if (now < tiltCooldown) return
+        val x = event.values[0]
+        if (abs(x) > 2.6f) {
+            playerLane = (playerLane + if (x > 0) -1 else 1).coerceIn(0, if (twoWay) 3 else 1)
+            tiltCooldown = now + 350L
+            invalidate()
+        }
+    }
 
     private fun paint(c: Int) { p.color = c; p.style = Paint.Style.FILL; p.strokeWidth = 1f }
     private fun label(c: Canvas, s: String, x: Float, y: Float, size: Float, col: Int = Color.WHITE, center: Boolean = false) {
@@ -93,7 +125,7 @@ private class RacingView(context: Context) : View(context) {
             button(c,w*.83f,h*.73f,w*.96f,h*.94f,"▶")
             button(c,w*.38f,h*.82f,w*.48f,h*.96f,"−")
             button(c,w*.52f,h*.82f,w*.62f,h*.96f,"+")
-            label(c,if(twoWay)"TWO WAY" else "ONE WAY",w*.96f,h*.08f,h*.035f,Color.WHITE,true)
+            label(c,(if(twoWay)"TWO WAY" else "ONE WAY") + if(tiltEnabled) " • TILT ON" else "",w*.96f,h*.08f,h*.035f,Color.WHITE,true)
         }
         if(menu) drawMenu(c,w,h) else if(crashed) drawCrash(c,w,h)
         postInvalidateOnAnimation()
@@ -126,7 +158,7 @@ private class RacingView(context: Context) : View(context) {
         }
         button(c,w*.31f,h*.71f,w*.49f,h*.84f,"START")
         button(c,w*.52f,h*.71f,w*.70f,h*.84f,if(twoWay)"TWO WAY" else "ONE WAY")
-        label(c,"Touch left/right to steer • + / − changes speed",w/2,h*.94f,h*.027f,Color.LTGRAY,true)
+        label(c,"Touch left/right to steer • tap top-left to toggle tilt",w/2,h*.94f,h*.027f,Color.LTGRAY,true)
     }
     private fun drawCrash(c:Canvas,w:Float,h:Float) {
         paint(Color.argb(205,0,0,0)); c.drawRect(w*.25f,h*.25f,w*.75f,h*.75f,p)
@@ -146,6 +178,7 @@ private class RacingView(context: Context) : View(context) {
                     }
                 }
             } else if(crashed) { menu=true }
+            else if(e.x<w*.25f && e.y<h*.22f) tiltEnabled=!tiltEnabled
             else if(e.x<w*.25f) playerLane=max(0,playerLane-1)
             else if(e.x>w*.75f) playerLane=min(if(twoWay)3 else 1,playerLane+1)
             else if(e.y>h*.78f) speed=if(e.x<w*.5f)max(50,speed-10) else min(260,speed+10)
