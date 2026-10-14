@@ -54,11 +54,11 @@ var selector_tuning_visible := false
 var selector_viewport: SubViewport
 var selector_preview: Node3D
 var selector_car_label: Label
-var selector_color_label: Label
-var selector_bumper_label: Label
-var selector_rims_label: Label
-var selector_hood_label: Label
-var selector_spoiler_label: Label
+var selector_color_label: Button
+var selector_bumper_label: Button
+var selector_rims_label: Button
+var selector_hood_label: Button
+var selector_spoiler_label: Button
 var selector_dragging := false
 var selector_last_x := 0.0
 var tuning_bumper := 0
