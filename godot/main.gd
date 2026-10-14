@@ -71,75 +71,153 @@ func _make_world() -> void:
     sky_mat.ground_horizon_color = Color(0.28, 0.42, 0.25)
     e.sky.sky_material = sky_mat
     e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-    e.ambient_light_color = Color(0.7, 0.76, 0.85)
-    e.ambient_light_energy = 0.95
+    e.ambient_light_color = Color(0.72, 0.78, 0.86)
+    e.ambient_light_energy = 0.82
     e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+    e.tonemap_exposure = 1.08
+    e.tonemap_white = 5.0
+    e.ssao_enabled = true
+    e.ssao_radius = 1.4
+    e.ssao_intensity = 1.1
+    e.ssr_enabled = false
     env.environment = e
     add_child(env)
     var sun := DirectionalLight3D.new()
     sun.rotation_degrees = Vector3(-48, -25, 0)
-    sun.light_energy = 1.4
+    sun.light_energy = 1.35
     sun.shadow_enabled = true
+    sun.directional_shadow_max_distance = 85.0
+    sun.shadow_bias = 0.035
     add_child(sun)
     var ground := _box(Vector3(250, 0.3, 260), Color(0.17, 0.42, 0.20))
     ground.position = Vector3(0, -0.35, -65)
     add_child(ground)
 
 func _make_road() -> void:
-    var road := _box(Vector3(ROAD_WIDTH, 0.18, ROAD_LENGTH), Color(0.12, 0.13, 0.15))
+    # Asphalt base with a repeating procedural noise texture instead of a flat grey box.
+    var road := _box(Vector3(ROAD_WIDTH, 0.18, ROAD_LENGTH), Color(0.13, 0.135, 0.14))
     road.position = Vector3(0, -0.12, -70)
     add_child(road)
+
+    var asphalt := StandardMaterial3D.new()
+    asphalt.albedo_color = Color(0.78, 0.79, 0.80)
+    asphalt.roughness = 0.96
+    var asphalt_noise := FastNoiseLite.new()
+    asphalt_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+    asphalt_noise.frequency = 0.075
+    asphalt_noise.fractal_octaves = 4
+    var asphalt_texture := NoiseTexture2D.new()
+    asphalt_texture.width = 512
+    asphalt_texture.height = 512
+    asphalt_texture.seamless = true
+    asphalt_texture.noise = asphalt_noise
+    asphalt.albedo_texture = asphalt_texture
+    asphalt.uv1_scale = Vector3(3.0, 22.0, 1.0)
+    var road_surface := MeshInstance3D.new()
+    var road_plane := PlaneMesh.new()
+    road_plane.size = Vector2(ROAD_WIDTH, ROAD_LENGTH)
+    road_surface.mesh = road_plane
+    road_surface.material_override = asphalt
+    road_surface.position = Vector3(0, -0.025, -70)
+    add_child(road_surface)
+
+    # Narrow textured shoulders, crisp edge paint, and metal barriers with visible supports.
     for side in [-1.0, 1.0]:
-        var edge := _box(Vector3(0.22, 0.08, ROAD_LENGTH), Color(0.92, 0.92, 0.88))
-        edge.position = Vector3(side * ROAD_WIDTH * 0.47, 0.0, -70)
+        var shoulder := _box(Vector3(1.05, 0.035, ROAD_LENGTH), Color(0.34, 0.35, 0.34))
+        shoulder.position = Vector3(side * (ROAD_WIDTH * 0.5 + 0.52), -0.025, -70)
+        add_child(shoulder)
+        var edge := _box(Vector3(0.16, 0.035, ROAD_LENGTH), Color(0.94, 0.94, 0.88))
+        edge.position = Vector3(side * ROAD_WIDTH * 0.465, 0.012, -70)
         add_child(edge)
-        var rail := _box(Vector3(0.16, 0.65, ROAD_LENGTH), Color(0.58, 0.62, 0.65))
-        rail.position = Vector3(side * (ROAD_WIDTH * 0.5 + 0.8), 0.45, -70)
+        var rail := _box(Vector3(0.14, 0.22, ROAD_LENGTH), Color(0.53, 0.57, 0.60))
+        rail.position = Vector3(side * (ROAD_WIDTH * 0.5 + 1.15), 0.62, -70)
         add_child(rail)
+        for i in range(32):
+            var post := _box(Vector3(0.12, 0.78, 0.18), Color(0.36, 0.39, 0.41))
+            post.position = Vector3(side * (ROAD_WIDTH * 0.5 + 1.15), 0.24, 12.0 - float(i) * 5.7)
+            add_child(post)
+            if i % 2 == 0:
+                var reflector := _box(Vector3(0.035, 0.10, 0.28), Color(0.95, 0.80, 0.28))
+                reflector.position = Vector3(side * (ROAD_WIDTH * 0.5 + 1.07), 0.63, 12.0 - float(i) * 5.7)
+                add_child(reflector)
+
+    # Broken white lane dividers, cycling with the road to preserve the endless-runner effect.
     for lane in [-1.0, 1.0]:
         for i in range(24):
-            var mark := _box(Vector3(0.10, 0.025, 3.0), Color(0.92, 0.92, 0.86))
-            mark.position = Vector3(lane * LANE_WIDTH, 0.015, 12.0 - float(i) * 7.5)
+            var mark := _box(Vector3(0.11, 0.028, 3.4), Color(0.93, 0.94, 0.91))
+            mark.position = Vector3(lane * LANE_WIDTH, 0.018, 12.0 - float(i) * 7.5)
             add_child(mark)
             road_marks.append(mark)
-    for side in [-1.0, 1.0]:
-        var shoulder := _box(Vector3(0.8, 0.04, ROAD_LENGTH), Color(0.32, 0.34, 0.34))
-        shoulder.position = Vector3(side * (ROAD_WIDTH * 0.5 + 0.42), -0.02, -70)
-        add_child(shoulder)
-    var center := _box(Vector3(0.13, 0.03, ROAD_LENGTH), Color(0.98, 0.75, 0.12))
-    center.position = Vector3(0, 0.02, -70)
-    add_child(center)
-    # Simple low-poly roadside trees create real depth/parallax in the 3D camera.
-    for i in range(26):
-        var z := 10.0 - float(i) * 7.0
-        for side in [-1.0, 1.0]:
-            var trunk := _box(Vector3(0.45, 2.2, 0.45), Color(0.30, 0.19, 0.10))
-            trunk.position = Vector3(side * 10.0, 1.0, z)
-            add_child(trunk)
-            var foliage := MeshInstance3D.new()
-            var cone := CylinderMesh.new()
-            cone.top_radius = 0.0
-            cone.bottom_radius = 1.5
-            cone.height = 3.2
-            foliage.mesh = cone
-            foliage.material_override = _mat(Color(0.10, 0.34 + float(i % 3) * 0.04, 0.16))
-            foliage.position = Vector3(side * 10.0, 3.6, z)
-            add_child(foliage)
 
-    # Add distant low-poly buildings and lit windows for a fuller roadside scene.
-    var building_colors: Array[Color] = [Color(0.68, 0.70, 0.73), Color(0.78, 0.65, 0.48), Color(0.46, 0.55, 0.62)]
+    var center := _box(Vector3(0.075, 0.025, ROAD_LENGTH), Color(0.98, 0.73, 0.13))
+    center.position = Vector3(0, 0.012, -70)
+    add_child(center)
+
+    # Small asphalt repairs add texture and scale without expensive real-time effects.
+    for i in range(16):
+        var patch := _box(Vector3(0.45 + float(i % 3) * 0.25, 0.012, 0.7 + float(i % 4) * 0.18), Color(0.105, 0.11, 0.115))
+        patch.position = Vector3(-4.7 + float((i * 7) % 10), 0.006, 8.0 - float(i) * 10.5)
+        add_child(patch)
+
+    # Varied roadside trees: cylindrical trunks and clustered broadleaf canopies.
+    for i in range(21):
+        var z := 12.0 - float(i) * 8.4
+        for side in [-1.0, 1.0]:
+            _make_roadside_tree(Vector3(side * (10.0 + float(i % 3) * 1.3), 0.0, z), i)
+
+    # Distant buildings with layered facades, windows, roofs, and roadside bushes.
+    var building_colors: Array[Color] = [Color(0.55, 0.58, 0.60), Color(0.72, 0.62, 0.48), Color(0.40, 0.49, 0.54), Color(0.64, 0.66, 0.62)]
     for i in range(10):
         var building_z := 2.0 - float(i) * 22.0
         for side in [-1.0, 1.0]:
             var h := 4.5 + float(i % 3) * 1.8
             var building := _box(Vector3(3.8, h, 4.8), building_colors[i % building_colors.size()])
-            building.position = Vector3(side * (17.0 + float(i % 2) * 2.0), h * 0.5 - 0.1, building_z)
+            building.position = Vector3(side * (18.0 + float(i % 2) * 2.0), h * 0.5 - 0.1, building_z)
             add_child(building)
+            var roof := _box(Vector3(4.0, 0.20, 5.0), Color(0.22, 0.24, 0.25))
+            roof.position = Vector3(building.position.x, h + 0.02, building_z)
+            add_child(roof)
             for floor_index in range(2):
                 for window_side in [-1.0, 1.0]:
-                    var window := _box(Vector3(0.62, 0.72, 0.06), Color(0.22, 0.48, 0.66))
+                    var window := _box(Vector3(0.62, 0.72, 0.06), Color(0.18, 0.38, 0.50))
                     window.position = Vector3(building.position.x + window_side * 0.9, 1.0 + float(floor_index) * 1.35, building_z - 2.44)
                     add_child(window)
+            for bush_index in range(3):
+                var bush := MeshInstance3D.new()
+                var bush_mesh := SphereMesh.new()
+                bush_mesh.radius = 0.7
+                bush_mesh.height = 1.1
+                bush.mesh = bush_mesh
+                bush.material_override = _mat(Color(0.12 + float(bush_index) * 0.025, 0.28 + float(i % 3) * 0.025, 0.13), 0.0, 0.94)
+                bush.position = Vector3(building.position.x + float(bush_index - 1) * 1.25, 0.45, building_z + 3.3)
+                bush.scale = Vector3(1.15, 0.8, 0.85)
+                add_child(bush)
+
+func _make_roadside_tree(base: Vector3, variant: int) -> void:
+    var trunk_height := 2.2 + float(variant % 4) * 0.28
+    var trunk := _cylinder(0.22, trunk_height, Color(0.27, 0.16, 0.09))
+    trunk.position = base + Vector3(0, trunk_height * 0.5, 0)
+    add_child(trunk)
+
+    var greens: Array[Color] = [Color(0.08, 0.25, 0.10), Color(0.12, 0.34, 0.13), Color(0.17, 0.38, 0.16), Color(0.10, 0.29, 0.18)]
+    for cluster in range(5):
+        var crown := MeshInstance3D.new()
+        var crown_mesh := SphereMesh.new()
+        crown_mesh.radius = 1.05 if cluster == 0 else 0.72
+        crown_mesh.height = 2.0 if cluster == 0 else 1.4
+        crown.mesh = crown_mesh
+        crown.material_override = _mat(greens[(variant + cluster) % greens.size()], 0.0, 0.92)
+        var offset := Vector3(0, trunk_height + 0.65, 0) if cluster == 0 else Vector3(cos(float(cluster) * 1.25) * 0.7, trunk_height + 0.45 + float(cluster % 2) * 0.48, sin(float(cluster) * 1.25) * 0.62)
+        crown.position = base + offset
+        crown.scale = Vector3(1.0, 0.88, 0.92)
+        add_child(crown)
+
+    # Grass tufts break up the flat green verge.
+    for tuft in range(3):
+        var grass := _box(Vector3(0.10, 0.42, 0.08), Color(0.20, 0.39 + float(tuft) * 0.025, 0.13))
+        grass.position = base + Vector3(-1.0 + float(tuft) * 0.85, 0.20, 1.0 + float(tuft % 2) * 0.4)
+        grass.rotation.z = deg_to_rad(float(tuft - 1) * 16.0)
+        add_child(grass)
 
 
 func _make_car(color: Color, is_player: bool) -> Node3D:
