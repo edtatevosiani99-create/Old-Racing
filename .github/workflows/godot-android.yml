@@ -74,12 +74,12 @@ jobs:
           ls -la "$SDK_PATH"
           find "$SDK_PATH" -maxdepth 3 -type d \( -name "platform-tools" -o -name "build-tools" -o -name "platforms" \) -print
           cat "$HOME/.config/godot/editor_settings-4.tres"
-      - name: Install project Android build template
+      - name: Verify default Android export templates
         run: |
-          mkdir -p godot/android/build
-          unzip -oq "$HOME/.local/share/godot/export_templates/4.3.stable/android_source.zip" -d godot/android/build
-          test -f godot/android/build/build.gradle || find godot/android/build -maxdepth 3 -name build.gradle -print
-          find godot/android/build -maxdepth 2 -type f | head -30
+          ls -lh "$HOME/.local/share/godot/export_templates/4.3.stable/"
+          test -s "$HOME/.local/share/godot/export_templates/4.3.stable/android_debug.apk"
+          test -s "$HOME/.local/share/godot/export_templates/4.3.stable/android_release.apk"
+          test -f "${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/lib/android-sdk}}/platforms/android-34/android.jar"
       - name: Export Android APK
         run: |
           mkdir -p godot/build
