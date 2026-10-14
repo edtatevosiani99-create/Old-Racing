@@ -37,11 +37,16 @@ var touch_steer := 0.0
 var menu_active := true
 var menu_panel: Control
 var control_mode_button: Button
+var car_color_button: Button
+var selected_car_color := Color(0.08, 0.32, 0.95)
+var car_color_index := 0
+var car_colors: Array[Color] = [Color(0.08, 0.32, 0.95), Color(0.82, 0.08, 0.06), Color(0.86, 0.88, 0.90)]
+var car_names: Array[String] = ["SPORT BLUE", "MUSTANG RED", "BMW WHITE"]
 
 func _ready() -> void:
     _make_world()
     _make_road()
-    player = _make_car(Color(0.08, 0.32, 0.95), true)
+    player = _make_car(selected_car_color, true)
     player.position = Vector3(0, 0.0, PLAYER_Z)
     add_child(player)
     _make_camera()
@@ -274,12 +279,22 @@ func _make_menu() -> void:
     control_mode_button.pressed.connect(_toggle_control_mode)
     menu_panel.add_child(control_mode_button)
 
+    car_color_button = Button.new()
+    car_color_button.text = "CAR: " + car_names[car_color_index]
+    car_color_button.anchor_left = 0.30
+    car_color_button.anchor_right = 0.70
+    car_color_button.anchor_top = 0.57
+    car_color_button.anchor_bottom = 0.67
+    car_color_button.add_theme_font_size_override("font_size", 20)
+    car_color_button.pressed.connect(_cycle_car_color)
+    menu_panel.add_child(car_color_button)
+
     var start_button := Button.new()
     start_button.text = "PLAY"
     start_button.anchor_left = 0.36
     start_button.anchor_right = 0.64
-    start_button.anchor_top = 0.64
-    start_button.anchor_bottom = 0.79
+    start_button.anchor_top = 0.73
+    start_button.anchor_bottom = 0.88
     start_button.add_theme_font_size_override("font_size", 30)
     start_button.pressed.connect(_start_game)
     menu_panel.add_child(start_button)
@@ -288,6 +303,16 @@ func _toggle_control_mode() -> void:
     tilt_mode = not tilt_mode
     control_mode_button.text = "STEERING: TILT" if tilt_mode else "STEERING: BUTTONS"
     touch_steer = 0.0
+
+func _cycle_car_color() -> void:
+    car_color_index = (car_color_index + 1) % car_colors.size()
+    selected_car_color = car_colors[car_color_index]
+    car_color_button.text = "CAR: " + car_names[car_color_index]
+    if is_instance_valid(player):
+        player.queue_free()
+    player = _make_car(selected_car_color, true)
+    player.position = Vector3(0, 0.0, PLAYER_Z)
+    add_child(player)
 
 func _start_game() -> void:
     menu_active = false
@@ -314,6 +339,8 @@ func _process(delta: float) -> void:
     var steer := touch_steer
     if tilt_mode and OS.has_feature("mobile"):
         steer = clamp(-Input.get_accelerometer().x / 5.0, -1.0, 1.0)
+        if abs(touch_steer) > 0.1:
+            steer = touch_steer
     if Input.is_action_pressed("ui_left"):
         steer = -1.0
     elif Input.is_action_pressed("ui_right"):
