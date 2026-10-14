@@ -105,6 +105,14 @@ jobs:
           godot --headless --editor --path godot --quit
           test -f "${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/lib/android-sdk}}/platforms/android-34/android.jar"
           test -x "${JAVA_HOME}/bin/java"
+      - name: Runtime smoke test for main scene
+        run: |
+          set -o pipefail
+          godot --headless --path godot --quit-after 5 --verbose 2>&1 | tee /tmp/godot-runtime-smoke.log
+          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|ERROR:" /tmp/godot-runtime-smoke.log; then
+            echo "Godot runtime smoke test detected script errors."
+            exit 1
+          fi
       - name: Verify default Android export templates
         run: |
           ls -lh "$HOME/.local/share/godot/export_templates/4.3.stable/"
