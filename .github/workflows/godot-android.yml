@@ -34,6 +34,20 @@ jobs:
           mkdir -p "$HOME/.android"
           test -n "$ANDROID_HOME" || test -n "$ANDROID_SDK_ROOT"
           keytool -genkeypair -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" || true
+      - name: Install required Android SDK packages
+        run: |
+          SDK_PATH="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/lib/android-sdk}}"
+          SDKMANAGER="$(find "$SDK_PATH/cmdline-tools" -type f -name sdkmanager 2>/dev/null | head -n 1)"
+          if [ -z "$SDKMANAGER" ]; then
+            echo "sdkmanager was not found under $SDK_PATH/cmdline-tools"
+            find "$SDK_PATH" -maxdepth 5 -type f -name sdkmanager -print
+            exit 1
+          fi
+          yes | "$SDKMANAGER" --sdk_root="$SDK_PATH" --licenses || true
+          "$SDKMANAGER" --sdk_root="$SDK_PATH" "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;23.2.8568313"
+          ls -la "$SDK_PATH/platforms"
+          ls -la "$SDK_PATH/build-tools"
+          ls -la "$SDK_PATH/ndk"
       - name: Validate Godot project and import resources
         run: godot --headless --editor --path godot --quit
       - name: Configure Godot Android export settings
