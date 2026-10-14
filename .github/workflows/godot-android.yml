@@ -106,6 +106,7 @@ jobs:
           test -f "${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/lib/android-sdk}}/platforms/android-34/android.jar"
           test -x "${JAVA_HOME}/bin/java"
       - name: Runtime smoke test for main scene
+        shell: bash
         run: |
           set -o pipefail
           godot --headless --path godot --quit-after 5 --verbose 2>&1 | tee /tmp/godot-runtime-smoke.log
