@@ -1,0 +1,332 @@
+extends Node3D
+
+# Starter 3D scene: geometry is generated in-engine, so no unlicensed assets are needed.
+const ROAD_WIDTH := 14.0
+const LANE_WIDTH := 3.5
+const ROAD_LENGTH := 180.0
+const PLAYER_Z := 5.0
+const MAX_SPEED := 48.0
+const MIN_SPEED := 8.0
+
+var speed := 26.0
+var distance := 0.0
+var coins := 0
+var steering := 0.0
+var gas_pressed := false
+var brake_pressed := false
+var crashed := false
+var paused := false
+var tilt_mode := true
+var traffic: Array[Node3D] = []
+var coin_nodes: Array[Node3D] = []
+var road_marks: Array[MeshInstance3D] = []
+var hud: Label
+var speed_label: Label
+var coin_label: Label
+var message_label: Label
+var gas_button: Button
+var brake_button: Button
+var left_button: Button
+var right_button: Button
+var pause_button: Button
+var player: Node3D
+var camera: Camera3D
+var spawn_timer := 0.0
+var coin_timer := 0.0
+var touch_steer := 0.0
+
+func _ready() -> void:
+    _make_world()
+    _make_road()
+    player = _make_car(Color(0.08, 0.32, 0.95), true)
+    player.position = Vector3(0, 0.0, PLAYER_Z)
+    add_child(player)
+    _make_camera()
+    _make_ui()
+    for i in range(5):
+        _spawn_traffic(-25.0 - float(i) * 24.0)
+    set_process(true)
+
+func _make_world() -> void:
+    var env := WorldEnvironment.new()
+    var e := Environment.new()
+    e.background_mode = Environment.BG_SKY
+    e.sky = Sky.new()
+    var sky_mat := ProceduralSkyMaterial.new()
+    sky_mat.sky_top_color = Color(0.12, 0.42, 0.76)
+    sky_mat.sky_horizon_color = Color(0.65, 0.82, 0.92)
+    sky_mat.ground_bottom_color = Color(0.12, 0.22, 0.12)
+    sky_mat.ground_horizon_color = Color(0.28, 0.42, 0.25)
+    e.sky.sky_material = sky_mat
+    e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+    e.ambient_light_color = Color(0.7, 0.76, 0.85)
+    e.ambient_light_energy = 0.8
+    env.environment = e
+    add_child(env)
+    var sun := DirectionalLight3D.new()
+    sun.rotation_degrees = Vector3(-48, -25, 0)
+    sun.light_energy = 1.4
+    add_child(sun)
+    var ground := _box(Vector3(250, 0.3, 260), Color(0.17, 0.42, 0.20))
+    ground.position = Vector3(0, -0.35, -65)
+    add_child(ground)
+
+func _make_road() -> void:
+    var road := _box(Vector3(ROAD_WIDTH, 0.18, ROAD_LENGTH), Color(0.12, 0.13, 0.15))
+    road.position = Vector3(0, -0.12, -70)
+    add_child(road)
+    for side in [-1.0, 1.0]:
+        var edge := _box(Vector3(0.22, 0.08, ROAD_LENGTH), Color(0.92, 0.92, 0.88))
+        edge.position = Vector3(side * ROAD_WIDTH * 0.47, 0.0, -70)
+        add_child(edge)
+        var rail := _box(Vector3(0.16, 0.65, ROAD_LENGTH), Color(0.58, 0.62, 0.65))
+        rail.position = Vector3(side * (ROAD_WIDTH * 0.5 + 0.8), 0.45, -70)
+        add_child(rail)
+    for lane in [-1.0, 1.0]:
+        for i in range(24):
+            var mark := _box(Vector3(0.10, 0.025, 3.0), Color(0.92, 0.92, 0.86))
+            mark.position = Vector3(lane * LANE_WIDTH, 0.015, 12.0 - float(i) * 7.5)
+            add_child(mark)
+            road_marks.append(mark)
+    var center := _box(Vector3(0.13, 0.03, ROAD_LENGTH), Color(0.98, 0.75, 0.12))
+    center.position = Vector3(0, 0.02, -70)
+    add_child(center)
+    # Simple low-poly roadside trees create real depth/parallax in the 3D camera.
+    for i in range(26):
+        var z := 10.0 - float(i) * 7.0
+        for side in [-1.0, 1.0]:
+            var trunk := _box(Vector3(0.45, 2.2, 0.45), Color(0.30, 0.19, 0.10))
+            trunk.position = Vector3(side * 10.0, 1.0, z)
+            add_child(trunk)
+            var foliage := MeshInstance3D.new()
+            var cone := CylinderMesh.new()
+            cone.top_radius = 0.0
+            cone.bottom_radius = 1.5
+            cone.height = 3.2
+            foliage.mesh = cone
+            foliage.material_override = _mat(Color(0.10, 0.34 + float(i % 3) * 0.04, 0.16))
+            foliage.position = Vector3(side * 10.0, 3.6, z)
+            add_child(foliage)
+
+func _make_car(color: Color, is_player: bool) -> Node3D:
+    var root := Node3D.new()
+    var body := _box(Vector3(1.55, 0.48, 3.0), color)
+    body.position.y = 0.62
+    root.add_child(body)
+    var hood := _box(Vector3(1.42, 0.22, 0.95), color.lightened(0.12))
+    hood.position = Vector3(0, 0.84, -0.82)
+    root.add_child(hood)
+    var roof := _box(Vector3(1.08, 0.48, 1.28), Color(0.10, 0.17, 0.22))
+    roof.position = Vector3(0, 1.05, 0.18)
+    root.add_child(roof)
+    var windshield := _box(Vector3(0.95, 0.30, 0.07), Color(0.30, 0.55, 0.67))
+    windshield.position = Vector3(0, 1.12, -0.48)
+    windshield.rotation.x = deg_to_rad(-20)
+    root.add_child(windshield)
+    for x in [-0.79, 0.79]:
+        for z in [-0.95, 0.95]:
+            var wheel := _cylinder(0.25, 0.18, Color(0.035, 0.04, 0.045))
+            wheel.rotation.z = PI / 2.0
+            wheel.position = Vector3(x, 0.35, z)
+            root.add_child(wheel)
+    var front_light := _box(Vector3(0.32, 0.10, 0.05), Color(1.0, 0.91, 0.65))
+    front_light.position = Vector3(-0.43, 0.70, -1.51)
+    root.add_child(front_light)
+    var front_light2 := front_light.duplicate() as MeshInstance3D
+    front_light2.position.x = 0.43
+    root.add_child(front_light2)
+    var tail := _box(Vector3(0.32, 0.11, 0.05), Color(0.95, 0.04, 0.035))
+    tail.position = Vector3(-0.43, 0.68, 1.51)
+    root.add_child(tail)
+    var tail2 := tail.duplicate() as MeshInstance3D
+    tail2.position.x = 0.43
+    root.add_child(tail2)
+    if is_player:
+        root.name = "PlayerCar"
+    return root
+
+func _make_camera() -> void:
+    camera = Camera3D.new()
+    camera.position = Vector3(0, 5.2, 12.5)
+    camera.rotation_degrees = Vector3(-16, 0, 0)
+    camera.fov = 72
+    add_child(camera)
+    camera.current = true
+
+func _make_ui() -> void:
+    var layer := CanvasLayer.new()
+    add_child(layer)
+    hud = Label.new()
+    hud.position = Vector2(22, 18)
+    hud.add_theme_font_size_override("font_size", 26)
+    hud.add_theme_color_override("font_color", Color.WHITE)
+    hud.add_theme_color_override("font_shadow_color", Color.BLACK)
+    hud.add_theme_constant_override("shadow_offset_x", 2)
+    hud.add_theme_constant_override("shadow_offset_y", 2)
+    layer.add_child(hud)
+    speed_label = Label.new()
+    speed_label.position = Vector2(22, 52)
+    speed_label.add_theme_font_size_override("font_size", 20)
+    speed_label.add_theme_color_override("font_color", Color(1.0, 0.83, 0.18))
+    layer.add_child(speed_label)
+    coin_label = Label.new()
+    coin_label.position = Vector2(22, 82)
+    coin_label.add_theme_font_size_override("font_size", 20)
+    coin_label.add_theme_color_override("font_color", Color(1.0, 0.83, 0.18))
+    layer.add_child(coin_label)
+    message_label = Label.new()
+    message_label.anchor_left = 0.25
+    message_label.anchor_right = 0.75
+    message_label.anchor_top = 0.30
+    message_label.anchor_bottom = 0.48
+    message_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    message_label.add_theme_font_size_override("font_size", 34)
+    message_label.add_theme_color_override("font_color", Color.WHITE)
+    layer.add_child(message_label)
+    pause_button = _button(layer, "Ⅱ", Vector2(0.91, 0.02), Vector2(0.98, 0.12))
+    pause_button.pressed.connect(_toggle_pause)
+    left_button = _button(layer, "◀", Vector2(0.02, 0.72), Vector2(0.14, 0.94))
+    left_button.button_down.connect(func(): touch_steer = -1.0)
+    left_button.button_up.connect(func(): touch_steer = 0.0)
+    right_button = _button(layer, "▶", Vector2(0.15, 0.72), Vector2(0.27, 0.94))
+    right_button.button_down.connect(func(): touch_steer = 1.0)
+    right_button.button_up.connect(func(): touch_steer = 0.0)
+    brake_button = _button(layer, "BRAKE", Vector2(0.73, 0.76), Vector2(0.85, 0.95))
+    brake_button.button_down.connect(func(): brake_pressed = true)
+    brake_button.button_up.connect(func(): brake_pressed = false)
+    gas_button = _button(layer, "GAS", Vector2(0.86, 0.76), Vector2(0.98, 0.95))
+    gas_button.button_down.connect(func(): gas_pressed = true)
+    gas_button.button_up.connect(func(): gas_pressed = false)
+
+func _button(layer: CanvasLayer, text_value: String, top_left: Vector2, bottom_right: Vector2) -> Button:
+    var b := Button.new()
+    b.text = text_value
+    b.anchor_left = top_left.x
+    b.anchor_top = top_left.y
+    b.anchor_right = bottom_right.x
+    b.anchor_bottom = bottom_right.y
+    b.offset_left = 0
+    b.offset_top = 0
+    b.offset_right = 0
+    b.offset_bottom = 0
+    b.add_theme_font_size_override("font_size", 22)
+    layer.add_child(b)
+    return b
+
+func _process(delta: float) -> void:
+    if paused or crashed:
+        return
+    var steer := touch_steer
+    if tilt_mode and OS.has_feature("mobile"):
+        steer = clamp(-Input.get_accelerometer().x / 5.0, -1.0, 1.0)
+    if Input.is_action_pressed("ui_left"):
+        steer = -1.0
+    elif Input.is_action_pressed("ui_right"):
+        steer = 1.0
+    steering = move_toward(steering, steer, delta * 2.5)
+    player.position.x = clamp(player.position.x + steering * delta * 6.0, -5.1, 5.1)
+    if gas_pressed:
+        speed = min(MAX_SPEED, speed + delta * 17.0)
+    elif brake_pressed:
+        speed = max(MIN_SPEED, speed - delta * 28.0)
+    else:
+        speed = move_toward(speed, 26.0, delta * 2.0)
+    distance += speed * delta * 0.5
+    spawn_timer += delta
+    coin_timer += delta
+    for mark in road_marks:
+        mark.position.z += speed * delta
+        if mark.position.z > 16.0:
+            mark.position.z -= 180.0
+    for car in traffic.duplicate():
+        car.position.z += speed * delta * 0.65
+        if car.position.z > 15.0:
+            traffic.erase(car)
+            car.queue_free()
+            _spawn_traffic(-150.0 - randf() * 55.0)
+        elif abs(car.position.z - PLAYER_Z) < 2.2 and abs(car.position.x - player.position.x) < 1.35:
+            crashed = true
+            message_label.text = "CRASH!  Tap to restart"
+    if spawn_timer > 1.7:
+        spawn_timer = 0.0
+        _spawn_traffic(-165.0 - randf() * 45.0)
+    if coin_timer > 2.5:
+        coin_timer = 0.0
+        _spawn_coin()
+    for coin in coin_nodes.duplicate():
+        coin.position.z += speed * delta
+        coin.rotation.y += delta * 2.5
+        if coin.position.z > 14.0:
+            coin_nodes.erase(coin)
+            coin.queue_free()
+        elif abs(coin.position.z - PLAYER_Z) < 1.8 and abs(coin.position.x - player.position.x) < 1.2:
+            coins += 1
+            coin_nodes.erase(coin)
+            coin.queue_free()
+    hud.text = "OLD RACING 3D     DISTANCE: %dm" % int(distance)
+    speed_label.text = "%d KM/H" % int(speed * 4.0)
+    coin_label.text = "●  %d" % coins
+
+func _spawn_traffic(z: float) -> void:
+    var colors := [Color(0.85, 0.08, 0.08), Color(0.10, 0.55, 0.30), Color(0.92, 0.72, 0.12), Color(0.78, 0.80, 0.84), Color(0.08, 0.10, 0.14)]
+    var car := _make_car(colors[randi() % colors.size()], false)
+    var lane := [-5.25, -1.75, 1.75, 5.25][randi() % 4]
+    car.position = Vector3(lane, 0, z)
+    add_child(car)
+    traffic.append(car)
+
+func _spawn_coin() -> void:
+    var coin := MeshInstance3D.new()
+    var mesh := CylinderMesh.new()
+    mesh.top_radius = 0.55
+    mesh.bottom_radius = 0.55
+    mesh.height = 0.12
+    coin.mesh = mesh
+    coin.material_override = _mat(Color(1.0, 0.72, 0.08), 0.35, 0.2)
+    coin.position = Vector3([-5.25, -1.75, 1.75, 5.25][randi() % 4], 1.0, -145.0)
+    add_child(coin)
+    coin_nodes.append(coin)
+
+func _toggle_pause() -> void:
+    paused = not paused
+    message_label.text = "PAUSED" if paused else ""
+
+func _unhandled_input(event: InputEvent) -> void:
+    if event is InputEventScreenTouch and event.pressed and crashed:
+        crashed = false
+        distance = 0.0
+        speed = 26.0
+        player.position = Vector3(0, 0, PLAYER_Z)
+        message_label.text = ""
+        for car in traffic:
+            car.queue_free()
+        traffic.clear()
+        for i in range(5):
+            _spawn_traffic(-25.0 - float(i) * 24.0)
+    elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+        _toggle_pause()
+
+func _box(size: Vector3, color: Color) -> MeshInstance3D:
+    var node := MeshInstance3D.new()
+    var mesh := BoxMesh.new()
+    mesh.size = size
+    node.mesh = mesh
+    node.material_override = _mat(color)
+    return node
+
+func _cylinder(radius: float, height: float, color: Color) -> MeshInstance3D:
+    var node := MeshInstance3D.new()
+    var mesh := CylinderMesh.new()
+    mesh.top_radius = radius
+    mesh.bottom_radius = radius
+    mesh.height = height
+    node.mesh = mesh
+    node.material_override = _mat(color)
+    return node
+
+func _mat(color: Color, metallic: float = 0.0, roughness: float = 0.72) -> StandardMaterial3D:
+    var m := StandardMaterial3D.new()
+    m.albedo_color = color
+    m.metallic = metallic
+    m.roughness = roughness
+    return m
