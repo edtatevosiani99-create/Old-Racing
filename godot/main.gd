@@ -42,6 +42,8 @@ var control_mode_button: Button
 var car_color_button: Button
 var selected_car_color := Color(0.08, 0.32, 0.95)
 var car_color_index := 2
+var selected_car_index := 0
+var paint_index := 0
 var car_colors: Array[Color] = [Color(0.78, 0.025, 0.02), Color(0.82, 0.035, 0.025), Color(0.12, 0.13, 0.15)]
 var car_names: Array[String] = ["FERRARI F40", "CAMARO ZL1", "DODGE CHARGER"]
 var pause_panel: Control
@@ -291,7 +293,7 @@ func _make_car(color: Color, is_player: bool) -> Node3D:
         "res://assets/vehicles/sedan-sports.glb",
         "res://assets/vehicles/suv-luxury.glb"
     ]
-    var selected_index := car_color_index % vehicle_paths.size() if is_player else randi_range(0, vehicle_paths.size() - 1)
+    var selected_index := selected_car_index % vehicle_paths.size() if is_player else randi_range(0, vehicle_paths.size() - 1)
     var vehicle_path := vehicle_paths[selected_index]
     if not ResourceLoader.exists(vehicle_path):
         vehicle_path = kenney_fallback_paths[selected_index]
@@ -650,7 +652,7 @@ func _make_menu() -> void:
     menu_panel.add_child(left_caption)
 
     var car_caption := Label.new()
-    car_caption.text = _car_display_name(car_color_index)
+    car_caption.text = _car_display_name(selected_car_index)
     car_caption.anchor_left = 0.055
     car_caption.anchor_right = 0.43
     car_caption.anchor_top = 0.29
@@ -930,7 +932,7 @@ func _open_car_selector() -> void:
     tuning_title.add_theme_color_override("font_color", Color(1.0, 0.78, 0.18))
     selector_panel.add_child(tuning_title)
 
-    selector_color_label = _selector_option_button("PAINT: " + tuning_color_names[car_color_index % tuning_color_names.size()], 0.72, 0.425, 0.97, 0.49)
+    selector_color_label = _selector_option_button("PAINT: " + tuning_color_names[paint_index % tuning_color_names.size()], 0.72, 0.425, 0.97, 0.49)
     selector_color_label.pressed.connect(_selector_cycle_color)
     selector_panel.add_child(selector_color_label)
 
@@ -971,21 +973,20 @@ func _refresh_selector_preview() -> void:
     selector_preview.rotation.y = deg_to_rad(-25.0)
     var world_root := selector_viewport.get_child(0) as Node3D
     world_root.add_child(selector_preview)
-    selector_car_label.text = _car_display_name(car_color_index)
-    selector_color_label.text = "PAINT: " + tuning_color_names[car_color_index % tuning_color_names.size()]
+    selector_car_label.text = _car_display_name(selected_car_index)
+    selector_color_label.text = "PAINT: " + tuning_color_names[paint_index % tuning_color_names.size()]
     selector_bumper_label.text = "BUMPER KIT: %d" % (tuning_bumper + 1)
     selector_rims_label.text = "WHEELS: %d" % (tuning_rims + 1)
     selector_hood_label.text = "HOOD: %d" % (tuning_hood + 1)
     selector_spoiler_label.text = "SPOILER: %d" % (tuning_spoiler + 1)
 
 func _selector_change_car(direction: int) -> void:
-    car_color_index = posmod(car_color_index + direction, car_names.size())
-    selected_car_color = tuning_colors[car_color_index % tuning_colors.size()]
+    selected_car_index = posmod(selected_car_index + direction, car_names.size())
     _refresh_selector_preview()
 
 func _selector_cycle_color() -> void:
-    car_color_index = (car_color_index + 1) % tuning_colors.size()
-    selected_car_color = tuning_colors[car_color_index]
+    paint_index = (paint_index + 1) % tuning_colors.size()
+    selected_car_color = tuning_colors[paint_index]
     # Preserve the chosen vehicle separately from paint colour.
     _refresh_selector_preview()
 
@@ -1056,7 +1057,7 @@ func _confirm_selected_car() -> void:
     player = _make_car(selected_car_color, true)
     player.position = Vector3(0, 0.0, PLAYER_Z)
     add_child(player)
-    car_color_button.text = "GARAGE: " + _car_display_name(car_color_index)
+    car_color_button.text = "GARAGE: " + _car_display_name(selected_car_index)
     _close_car_selector()
 
 func _close_car_selector() -> void:
