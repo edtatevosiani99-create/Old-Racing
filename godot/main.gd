@@ -41,7 +41,7 @@ var menu_panel: Control
 var control_mode_button: Button
 var car_color_button: Button
 var selected_car_color := Color(0.08, 0.32, 0.95)
-var car_color_index := 0
+var car_color_index := 2
 var car_colors: Array[Color] = [Color(0.78, 0.025, 0.02), Color(0.82, 0.035, 0.025), Color(0.12, 0.13, 0.15)]
 var car_names: Array[String] = ["FERRARI F40", "CAMARO ZL1", "DODGE CHARGER"]
 var pause_panel: Control
@@ -250,7 +250,7 @@ func _car_display_name(index: int) -> String:
     var model_paths: Array[String] = [
         "res://assets/cars/ferrari_f40.glb",
         "res://assets/cars/camaro_zl1_2017.glb",
-        "res://assets/cars/dodge_charger.glb"
+        "res://assets/cars/dodge_charger.gltf"
     ]
     if index >= 0 and index < model_paths.size() and ResourceLoader.exists(model_paths[index]):
         return car_names[index]
