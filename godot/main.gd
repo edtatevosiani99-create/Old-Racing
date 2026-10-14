@@ -7,6 +7,12 @@ const ROAD_LENGTH := 180.0
 const PLAYER_Z := 5.0
 const MAX_SPEED := 48.0
 const MIN_SPEED := 8.0
+# Per-car handling profiles: Ferrari is fastest, Camaro balanced, Charger heavier.
+const CAR_TOP_SPEEDS: Array[float] = [78.0, 72.0, 65.0]
+const CAR_ACCELERATION: Array[float] = [19.0, 16.0, 13.5]
+const CAR_BRAKING: Array[float] = [34.0, 30.0, 27.0]
+const CAR_STEERING_RESPONSE: Array[float] = [3.0, 2.55, 2.1]
+const CAR_LATERAL_SPEED: Array[float] = [6.5, 6.0, 5.4]
 
 var speed := 26.0
 var distance := 0.0
@@ -54,6 +60,7 @@ var selector_tuning_visible := false
 var selector_viewport: SubViewport
 var selector_preview: Node3D
 var selector_car_label: Label
+var selector_stats_label: Label
 var selector_color_label: Button
 var selector_bumper_label: Button
 var selector_rims_label: Button
@@ -303,8 +310,7 @@ func _make_car(color: Color, is_player: bool) -> Node3D:
         if vehicle_scene != null:
             var vehicle_model := vehicle_scene.instantiate() as Node3D
             if vehicle_model != null:
-                vehicle_model.scale = Vector3(1.10, 1.10, 1.10)
-                vehicle_model.position = Vector3(0, 0.02, 0)
+                _normalize_vehicle_model(vehicle_model)
                 _tint_vehicle_paint(vehicle_model, color)
                 root.add_child(vehicle_model)
                 _add_tuning_parts(root, color)
@@ -877,9 +883,9 @@ func _open_car_selector() -> void:
     preview_world.add_child(rim_light)
 
     var studio_camera := Camera3D.new()
-    studio_camera.position = Vector3(4.2, 2.8, 5.5)
-    studio_camera.look_at(Vector3(0, 0.58, 0), Vector3.UP)
-    studio_camera.fov = 42.0
+    studio_camera.position = Vector3(3.5, 2.45, 5.0)
+    studio_camera.look_at(Vector3(0, 0.62, 0), Vector3.UP)
+    studio_camera.fov = 46.0
     preview_world.add_child(studio_camera)
     studio_camera.current = true
 
@@ -918,10 +924,19 @@ func _open_car_selector() -> void:
     selector_car_label.add_theme_color_override("font_color", Color.WHITE)
     selector_panel.add_child(selector_car_label)
 
-    var previous := _menu_button("◀  PREVIOUS", 0.72, 0.275, 0.835, 0.34, 14, false)
+    selector_stats_label = Label.new()
+    selector_stats_label.anchor_left = 0.72
+    selector_stats_label.anchor_top = 0.335
+    selector_stats_label.anchor_right = 0.98
+    selector_stats_label.anchor_bottom = 0.365
+    selector_stats_label.add_theme_font_size_override("font_size", 11)
+    selector_stats_label.add_theme_color_override("font_color", Color(0.80, 0.88, 0.95))
+    selector_panel.add_child(selector_stats_label)
+
+    var previous := _menu_button("◀  PREVIOUS", 0.72, 0.275, 0.835, 0.33, 14, false)
     previous.pressed.connect(func(): _selector_change_car(-1))
     selector_panel.add_child(previous)
-    var next := _menu_button("NEXT  ▶", 0.845, 0.275, 0.97, 0.34, 14, false)
+    var next := _menu_button("NEXT  ▶", 0.845, 0.275, 0.97, 0.33, 14, false)
     next.pressed.connect(func(): _selector_change_car(1))
     selector_panel.add_child(next)
 
@@ -988,6 +1003,7 @@ func _refresh_selector_preview() -> void:
     var world_root := selector_viewport.get_child(0) as Node3D
     world_root.add_child(selector_preview)
     selector_car_label.text = _car_display_name(selected_car_index)
+    selector_stats_label.text = _car_stats_text(selected_car_index)
     selector_color_label.text = "PAINT: " + tuning_color_names[paint_index % tuning_color_names.size()]
     selector_bumper_label.text = "BUMPER KIT: %d" % (tuning_bumper + 1)
     selector_rims_label.text = "WHEELS: %d" % (tuning_rims + 1)
@@ -997,7 +1013,18 @@ func _refresh_selector_preview() -> void:
 
 func _selector_change_car(direction: int) -> void:
     selected_car_index = posmod(selected_car_index + direction, car_names.size())
+    _apply_car_performance()
     _refresh_selector_preview()
+
+func _car_stats_text(index: int) -> String:
+    var i := posmod(index, CAR_TOP_SPEEDS.size())
+    var handling_label := ["SHARP", "BALANCED", "HEAVY"][i]
+    return "TOP %d km/h   ACCEL %d/10   BRAKE %d/10   STEERING %s" % [int(CAR_TOP_SPEEDS[i] * 4.0), [10, 8, 7][i], [10, 9, 8][i], handling_label]
+
+func _apply_car_performance() -> void:
+    var i := posmod(selected_car_index, CAR_TOP_SPEEDS.size())
+    # Reset speed when changing cars so the next car starts with its own feel.
+    speed = minf(speed, CAR_TOP_SPEEDS[i])
 
 func _selector_cycle_color() -> void:
     paint_index = (paint_index + 1) % tuning_colors.size()
@@ -1020,6 +1047,40 @@ func _selector_cycle_hood() -> void:
 func _selector_cycle_spoiler() -> void:
     tuning_spoiler = (tuning_spoiler + 1) % 4
     _refresh_selector_preview()
+
+func _collect_vehicle_bounds(node: Node, parent_transform: Transform3D, bounds_data: Array) -> void:
+    var current_transform := parent_transform
+    if node is Node3D:
+        current_transform = parent_transform * (node as Node3D).transform
+    if node is MeshInstance3D:
+        var mesh_instance := node as MeshInstance3D
+        if mesh_instance.mesh != null:
+            var mesh_bounds: AABB = current_transform * mesh_instance.mesh.get_aabb()
+            if not bounds_data[0]:
+                bounds_data[0] = true
+                bounds_data[1] = mesh_bounds
+            else:
+                bounds_data[1] = (bounds_data[1] as AABB).merge(mesh_bounds)
+    for child in node.get_children():
+        _collect_vehicle_bounds(child, current_transform, bounds_data)
+
+func _normalize_vehicle_model(model: Node3D) -> void:
+    # Different imported models use different origins and unit scales. Normalize their
+    # footprint and put their wheels/body on the same ground plane before preview/gameplay.
+    var bounds_data: Array = [false, AABB()]
+    _collect_vehicle_bounds(model, Transform3D.IDENTITY, bounds_data)
+    if not bounds_data[0]:
+        model.scale = Vector3.ONE
+        return
+    var bounds: AABB = bounds_data[1]
+    var footprint := maxf(bounds.size.x, bounds.size.z)
+    if footprint < 0.01:
+        model.scale = Vector3.ONE
+        return
+    var factor := 3.4 / footprint
+    var center := bounds.position + bounds.size * 0.5
+    model.scale = Vector3.ONE * factor
+    model.position = Vector3(-center.x * factor, -bounds.position.y * factor, -center.z * factor)
 
 func _tint_vehicle_paint(node: Node, color: Color) -> void:
     # Recolor bright painted body surfaces on imported cars while preserving dark rubber, glass, and trim.
@@ -1098,6 +1159,7 @@ func _confirm_selected_car() -> void:
     player = _make_car(selected_car_color, true)
     player.position = Vector3(0, 0.0, PLAYER_Z)
     add_child(player)
+    _apply_car_performance()
     car_color_button.text = "GARAGE: " + _car_display_name(selected_car_index)
     _close_car_selector()
 
@@ -1228,12 +1290,13 @@ func _process(delta: float) -> void:
         steer = -1.0
     elif Input.is_action_pressed("ui_right"):
         steer = 1.0
-    steering = move_toward(steering, steer, delta * 2.5)
-    player.position.x = clamp(player.position.x + steering * delta * 6.0, -5.1, 5.1)
+    var car_index := posmod(selected_car_index, CAR_TOP_SPEEDS.size())
+    steering = move_toward(steering, steer, delta * CAR_STEERING_RESPONSE[car_index])
+    player.position.x = clamp(player.position.x + steering * delta * CAR_LATERAL_SPEED[car_index], -5.1, 5.1)
     if gas_pressed and not brake_pressed:
-        speed = min(MAX_SPEED, speed + delta * 17.0)
+        speed = minf(CAR_TOP_SPEEDS[car_index], speed + delta * CAR_ACCELERATION[car_index])
     elif brake_pressed and not gas_pressed:
-        speed = max(MIN_SPEED, speed - delta * 28.0)
+        speed = maxf(MIN_SPEED, speed - delta * CAR_BRAKING[car_index])
     elif gas_pressed and brake_pressed:
         speed = move_toward(speed, MIN_SPEED, delta * 35.0)
     else:
