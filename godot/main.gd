@@ -262,10 +262,12 @@ func _make_ui() -> void:
     pause_button = _button(layer, "Ⅱ", Vector2(0.91, 0.02), Vector2(0.98, 0.12))
     pause_button.pressed.connect(_toggle_pause)
     _make_game_overlays(layer)
+    # Driving layout changes with steering mode. Pedals stay on-screen in both modes.
     left_button = _button(layer, "◀", Vector2(0.02, 0.72), Vector2(0.14, 0.94))
     right_button = _button(layer, "▶", Vector2(0.15, 0.72), Vector2(0.27, 0.94))
-    brake_button = _button(layer, "BRAKE", Vector2(0.73, 0.76), Vector2(0.85, 0.95))
+    brake_button = _button(layer, "BRAKE", Vector2(0.72, 0.76), Vector2(0.84, 0.95))
     gas_button = _button(layer, "GAS", Vector2(0.86, 0.76), Vector2(0.98, 0.95))
+    _refresh_control_layout()
 
 
 func _make_menu() -> void:
@@ -410,6 +412,27 @@ func _toggle_control_mode() -> void:
     tilt_mode = not tilt_mode
     control_mode_button.text = "STEERING: TILT" if tilt_mode else "STEERING: BUTTONS"
     touch_steer = 0.0
+    active_touches.clear()
+    _refresh_control_layout()
+
+func _refresh_control_layout() -> void:
+    if not is_instance_valid(left_button) or not is_instance_valid(right_button):
+        return
+    # Tilt mode: no steering arrows; brake is on the far left and gas on the far right.
+    left_button.visible = not tilt_mode
+    right_button.visible = not tilt_mode
+    if tilt_mode:
+        brake_button.anchor_left = 0.02
+        brake_button.anchor_right = 0.16
+        brake_button.text = "BRAKE"
+    else:
+        brake_button.anchor_left = 0.72
+        brake_button.anchor_right = 0.84
+        brake_button.text = "BRAKE"
+    gas_button.anchor_left = 0.86
+    gas_button.anchor_right = 0.98
+    brake_button.queue_redraw()
+    gas_button.queue_redraw()
 
 func _cycle_car_color() -> void:
     car_color_index = (car_color_index + 1) % car_colors.size()
@@ -645,11 +668,13 @@ func _refresh_touch_controls() -> void:
         var ny := p.y / viewport_size.y
         if ny >= 0.68 and nx >= 0.84:
             gas_pressed = true
-        elif ny >= 0.68 and nx >= 0.70 and nx < 0.84:
+        elif ny >= 0.68 and tilt_mode and nx < 0.18:
             brake_pressed = true
-        elif ny >= 0.68 and nx < 0.145:
+        elif ny >= 0.68 and not tilt_mode and nx >= 0.70 and nx < 0.85:
+            brake_pressed = true
+        elif ny >= 0.68 and not tilt_mode and nx < 0.145:
             left_down = true
-        elif ny >= 0.68 and nx >= 0.145 and nx < 0.29:
+        elif ny >= 0.68 and not tilt_mode and nx >= 0.145 and nx < 0.29:
             right_down = true
     if left_down and not right_down:
         touch_steer = -1.0
