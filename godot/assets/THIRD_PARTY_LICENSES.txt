@@ -1,0 +1,18 @@
+# Third-party asset credits — Old-Racing
+
+The following models are selected for use but are **not bundled yet**. Keep these credits in the released game only after the corresponding model files have actually been downloaded and included.
+
+- "Ferrari F40" by PuKkBuMXDD, via Poly Pizza — Creative Commons Attribution. Source: https://poly.pizza/m/RTwim9bhNd
+- "Camaro ZL1 2017" by Kris Tong, via Poly Pizza — Creative Commons Attribution. Source: https://poly.pizza/m/7bF7UVAoYRG
+- "Dodge Charger" by David Sirera, via Poly Pizza — Creative Commons Attribution. Source: https://poly.pizza/m/4b80hRVxqvv
+
+The individual model pages specify Creative Commons Attribution. Follow the exact licence linked from each page when redistributing. Do not remove creator attribution.
+
+## Required asset paths
+
+After downloading the models, place the GLB files at:
+- `godot/assets/cars/ferrari_f40.glb`
+- `godot/assets/cars/camaro_zl1_2017.glb`
+- `godot/assets/cars/dodge_charger.glb`
+
+If the files are absent, the game currently falls back to generated placeholder cars; that does not count as model integration.
