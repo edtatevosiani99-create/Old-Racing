@@ -46,6 +46,24 @@ var car_colors: Array[Color] = [Color(0.78, 0.025, 0.02), Color(0.82, 0.035, 0.0
 var car_names: Array[String] = ["FERRARI F40", "CAMARO ZL1", "DODGE CHARGER"]
 var pause_panel: Control
 var crash_panel: Control
+var selector_panel: Control
+var selector_active := false
+var selector_viewport: SubViewport
+var selector_preview: Node3D
+var selector_car_label: Label
+var selector_color_label: Label
+var selector_bumper_label: Label
+var selector_rims_label: Label
+var selector_hood_label: Label
+var selector_spoiler_label: Label
+var selector_dragging := false
+var selector_last_x := 0.0
+var tuning_bumper := 0
+var tuning_rims := 0
+var tuning_hood := 0
+var tuning_spoiler := 0
+var tuning_colors: Array[Color] = [Color(0.82, 0.025, 0.02), Color(0.02, 0.28, 0.95), Color(0.02, 0.68, 0.28), Color(0.92, 0.82, 0.08), Color(0.88, 0.88, 0.90), Color(0.035, 0.04, 0.055)]
+var tuning_color_names: Array[String] = ["RACING RED", "ELECTRIC BLUE", "RACING GREEN", "YELLOW", "PEARL WHITE", "MIDNIGHT BLACK"]
 
 func _ready() -> void:
     _make_world()
@@ -285,6 +303,7 @@ func _make_car(color: Color, is_player: bool) -> Node3D:
                 vehicle_model.scale = Vector3(1.10, 1.10, 1.10)
                 vehicle_model.position = Vector3(0, 0.02, 0)
                 root.add_child(vehicle_model)
+                _add_tuning_parts(root, color)
                 if is_player:
                     root.name = "PlayerCar"
                 return root
@@ -493,6 +512,7 @@ func _make_car(color: Color, is_player: bool) -> Node3D:
         pillar.rotation.x = deg_to_rad(-8.0)
         root.add_child(pillar)
 
+    _add_tuning_parts(root, color)
     if is_player:
         root.name = "PlayerCar"
     return root
@@ -679,7 +699,7 @@ func _make_menu() -> void:
     menu_panel.add_child(start_button)
 
     var garage_button := _menu_button("GARAGE  /  CHANGE CAR", 0.69, 0.49, 0.93, 0.585, 16, false)
-    garage_button.pressed.connect(_cycle_car_color)
+    garage_button.pressed.connect(_open_car_selector)
     menu_panel.add_child(garage_button)
     car_color_button = garage_button
 
@@ -758,15 +778,293 @@ func _refresh_control_layout() -> void:
     brake_button.queue_redraw()
     gas_button.queue_redraw()
 
-func _cycle_car_color() -> void:
-    car_color_index = (car_color_index + 1) % car_colors.size()
-    selected_car_color = car_colors[car_color_index]
-    car_color_button.text = "GARAGE: " + _car_display_name(car_color_index)
+func _open_car_selector() -> void:
+    if is_instance_valid(selector_panel):
+        selector_panel.queue_free()
+    selector_active = true
+    selector_panel = Control.new()
+    selector_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    selector_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+    selector_panel.z_index = 40
+    ui_layer.add_child(selector_panel)
+
+    var backdrop := ColorRect.new()
+    backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    backdrop.color = Color(0.008, 0.018, 0.032, 0.98)
+    selector_panel.add_child(backdrop)
+
+    var top := ColorRect.new()
+    top.anchor_right = 1.0
+    top.anchor_bottom = 0.12
+    top.color = Color(0.02, 0.055, 0.085, 1.0)
+    selector_panel.add_child(top)
+
+    var heading := Label.new()
+    heading.text = "GARAGE  /  CAR SELECT"
+    heading.anchor_left = 0.035
+    heading.anchor_top = 0.025
+    heading.anchor_right = 0.62
+    heading.anchor_bottom = 0.10
+    heading.add_theme_font_size_override("font_size", 30)
+    heading.add_theme_color_override("font_color", Color(0.88, 0.96, 1.0))
+    selector_panel.add_child(heading)
+
+    # A separate 3D viewport gives the car a clean, full-screen studio preview.
+    var preview_frame := Panel.new()
+    preview_frame.anchor_left = 0.025
+    preview_frame.anchor_top = 0.15
+    preview_frame.anchor_right = 0.69
+    preview_frame.anchor_bottom = 0.89
+    var frame_style := StyleBoxFlat.new()
+    frame_style.bg_color = Color(0.025, 0.055, 0.08, 0.95)
+    frame_style.border_color = Color(0.10, 0.42, 0.62, 0.95)
+    frame_style.set_border_width_all(2)
+    frame_style.set_corner_radius_all(14)
+    preview_frame.add_theme_stylebox_override("panel", frame_style)
+    selector_panel.add_child(preview_frame)
+
+    var viewport_container := SubViewportContainer.new()
+    viewport_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    viewport_container.stretch = true
+    preview_frame.add_child(viewport_container)
+    selector_viewport = SubViewport.new()
+    selector_viewport.size = Vector2i(900, 650)
+    selector_viewport.own_world_3d = true
+    selector_viewport.transparent_bg = false
+    selector_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+    viewport_container.add_child(selector_viewport)
+
+    var preview_world := Node3D.new()
+    selector_viewport.add_child(preview_world)
+    var studio_env := WorldEnvironment.new()
+    var studio_environment := Environment.new()
+    studio_environment.background_mode = Environment.BG_COLOR
+    studio_environment.background_color = Color(0.035, 0.075, 0.11)
+    studio_environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+    studio_environment.ambient_light_color = Color(0.65, 0.75, 0.88)
+    studio_environment.ambient_light_energy = 1.0
+    studio_environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+    studio_env.environment = studio_environment
+    preview_world.add_child(studio_env)
+
+    var studio_floor := MeshInstance3D.new()
+    var floor_mesh := PlaneMesh.new()
+    floor_mesh.size = Vector2(16.0, 16.0)
+    studio_floor.mesh = floor_mesh
+    studio_floor.position.y = -0.08
+    studio_floor.material_override = _mat(Color(0.045, 0.065, 0.085), 0.28, 0.42)
+    preview_world.add_child(studio_floor)
+
+    var key_light := DirectionalLight3D.new()
+    key_light.rotation_degrees = Vector3(-38, -32, 0)
+    key_light.light_energy = 2.0
+    key_light.shadow_enabled = true
+    preview_world.add_child(key_light)
+    var fill_light := OmniLight3D.new()
+    fill_light.position = Vector3(-4.0, 3.0, 2.0)
+    fill_light.light_energy = 2.2
+    fill_light.omni_range = 12.0
+    preview_world.add_child(fill_light)
+    var rim_light := OmniLight3D.new()
+    rim_light.position = Vector3(3.0, 2.5, -4.0)
+    rim_light.light_energy = 2.5
+    rim_light.omni_range = 12.0
+    preview_world.add_child(rim_light)
+
+    var studio_camera := Camera3D.new()
+    studio_camera.position = Vector3(4.2, 2.8, 5.5)
+    studio_camera.look_at(Vector3(0, 0.58, 0), Vector3.UP)
+    studio_camera.fov = 42.0
+    preview_world.add_child(studio_camera)
+    studio_camera.current = true
+
+    selector_preview = _make_car(selected_car_color, true)
+    selector_preview.position = Vector3.ZERO
+    selector_preview.rotation.y = deg_to_rad(-25.0)
+    preview_world.add_child(selector_preview)
+
+    var hint := Label.new()
+    hint.text = "DRAG TO ROTATE 360°"
+    hint.anchor_left = 0.08
+    hint.anchor_top = 0.81
+    hint.anchor_right = 0.62
+    hint.anchor_bottom = 0.87
+    hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    hint.add_theme_font_size_override("font_size", 16)
+    hint.add_theme_color_override("font_color", Color(0.45, 0.84, 1.0))
+    selector_panel.add_child(hint)
+
+    var info := Label.new()
+    info.text = "CHOOSE YOUR MACHINE"
+    info.anchor_left = 0.72
+    info.anchor_top = 0.15
+    info.anchor_right = 0.97
+    info.anchor_bottom = 0.205
+    info.add_theme_font_size_override("font_size", 19)
+    info.add_theme_color_override("font_color", Color(0.45, 0.84, 1.0))
+    selector_panel.add_child(info)
+
+    selector_car_label = Label.new()
+    selector_car_label.anchor_left = 0.72
+    selector_car_label.anchor_top = 0.205
+    selector_car_label.anchor_right = 0.98
+    selector_car_label.anchor_bottom = 0.265
+    selector_car_label.add_theme_font_size_override("font_size", 20)
+    selector_car_label.add_theme_color_override("font_color", Color.WHITE)
+    selector_panel.add_child(selector_car_label)
+
+    var previous := _menu_button("◀  PREVIOUS", 0.72, 0.275, 0.835, 0.34, 14, false)
+    previous.pressed.connect(func(): _selector_change_car(-1))
+    selector_panel.add_child(previous)
+    var next := _menu_button("NEXT  ▶", 0.845, 0.275, 0.97, 0.34, 14, false)
+    next.pressed.connect(func(): _selector_change_car(1))
+    selector_panel.add_child(next)
+
+    var tuning_title := Label.new()
+    tuning_title.text = "TUNING"
+    tuning_title.anchor_left = 0.72
+    tuning_title.anchor_top = 0.37
+    tuning_title.anchor_right = 0.96
+    tuning_title.anchor_bottom = 0.415
+    tuning_title.add_theme_font_size_override("font_size", 23)
+    tuning_title.add_theme_color_override("font_color", Color(1.0, 0.78, 0.18))
+    selector_panel.add_child(tuning_title)
+
+    selector_color_label = _selector_option_button("PAINT: " + tuning_color_names[car_color_index % tuning_color_names.size()], 0.72, 0.425, 0.97, 0.49)
+    selector_color_label.pressed.connect(_selector_cycle_color)
+    selector_panel.add_child(selector_color_label)
+
+    selector_bumper_label = _selector_option_button("FRONT / REAR BUMPER: %d" % (tuning_bumper + 1), 0.72, 0.50, 0.97, 0.565)
+    selector_bumper_label.pressed.connect(_selector_cycle_bumper)
+    selector_panel.add_child(selector_bumper_label)
+
+    selector_rims_label = _selector_option_button("WHEELS: %d" % (tuning_rims + 1), 0.72, 0.575, 0.97, 0.64)
+    selector_rims_label.pressed.connect(_selector_cycle_rims)
+    selector_panel.add_child(selector_rims_label)
+
+    selector_hood_label = _selector_option_button("HOOD: %d" % (tuning_hood + 1), 0.72, 0.65, 0.97, 0.715)
+    selector_hood_label.pressed.connect(_selector_cycle_hood)
+    selector_panel.add_child(selector_hood_label)
+
+    selector_spoiler_label = _selector_option_button("SPOILER: %d" % (tuning_spoiler + 1), 0.72, 0.725, 0.97, 0.79)
+    selector_spoiler_label.pressed.connect(_selector_cycle_spoiler)
+    selector_panel.add_child(selector_spoiler_label)
+
+    var select_button := _menu_button("SELECT CAR", 0.72, 0.82, 0.97, 0.895, 19, true)
+    select_button.pressed.connect(_confirm_selected_car)
+    selector_panel.add_child(select_button)
+    var back_button := _menu_button("BACK TO MENU", 0.72, 0.91, 0.97, 0.97, 15, false)
+    back_button.pressed.connect(_close_car_selector)
+    selector_panel.add_child(back_button)
+    _refresh_selector_preview()
+
+func _selector_option_button(label_text: String, left: float, top: float, right: float, bottom: float) -> Button:
+    return _menu_button(label_text, left, top, right, bottom, 13, false)
+
+func _refresh_selector_preview() -> void:
+    if not is_instance_valid(selector_panel):
+        return
+    if is_instance_valid(selector_preview):
+        selector_preview.queue_free()
+    selector_preview = _make_car(selected_car_color, true)
+    selector_preview.position = Vector3.ZERO
+    selector_preview.rotation.y = deg_to_rad(-25.0)
+    var world_root := selector_viewport.get_child(0) as Node3D
+    world_root.add_child(selector_preview)
+    selector_car_label.text = _car_display_name(car_color_index)
+    selector_color_label.text = "PAINT: " + tuning_color_names[car_color_index % tuning_color_names.size()]
+    selector_bumper_label.text = "BUMPER KIT: %d" % (tuning_bumper + 1)
+    selector_rims_label.text = "WHEELS: %d" % (tuning_rims + 1)
+    selector_hood_label.text = "HOOD: %d" % (tuning_hood + 1)
+    selector_spoiler_label.text = "SPOILER: %d" % (tuning_spoiler + 1)
+
+func _selector_change_car(direction: int) -> void:
+    car_color_index = posmod(car_color_index + direction, car_names.size())
+    selected_car_color = tuning_colors[car_color_index % tuning_colors.size()]
+    _refresh_selector_preview()
+
+func _selector_cycle_color() -> void:
+    car_color_index = (car_color_index + 1) % tuning_colors.size()
+    selected_car_color = tuning_colors[car_color_index]
+    # Preserve the chosen vehicle separately from paint colour.
+    _refresh_selector_preview()
+
+func _selector_cycle_bumper() -> void:
+    tuning_bumper = (tuning_bumper + 1) % 3
+    _refresh_selector_preview()
+
+func _selector_cycle_rims() -> void:
+    tuning_rims = (tuning_rims + 1) % 4
+    _refresh_selector_preview()
+
+func _selector_cycle_hood() -> void:
+    tuning_hood = (tuning_hood + 1) % 3
+    _refresh_selector_preview()
+
+func _selector_cycle_spoiler() -> void:
+    tuning_spoiler = (tuning_spoiler + 1) % 4
+    _refresh_selector_preview()
+
+func _add_tuning_parts(root: Node3D, color: Color) -> void:
+    # Modular visual body-kit choices. Parts are procedural and remain free of external paid assets.
+    var bumper_width := 1.82 + float(tuning_bumper) * 0.10
+    var lip_depth := 0.28 + float(tuning_bumper) * 0.08
+    var front_lip := _box(Vector3(bumper_width, 0.055, lip_depth), Color(0.018, 0.021, 0.025))
+    front_lip.position = Vector3(0, 0.285, -1.58 - float(tuning_bumper) * 0.04)
+    root.add_child(front_lip)
+    var rear_diffuser := _box(Vector3(1.28 + float(tuning_bumper) * 0.10, 0.12, 0.20 + float(tuning_bumper) * 0.04), Color(0.025, 0.028, 0.032))
+    rear_diffuser.position = Vector3(0, 0.285, 1.56 + float(tuning_bumper) * 0.035)
+    root.add_child(rear_diffuser)
+
+    var rim_colors: Array[Color] = [Color(0.72, 0.75, 0.78), Color(0.12, 0.13, 0.15), Color(0.78, 0.45, 0.12), Color(0.85, 0.86, 0.88)]
+    for side in [-1.0, 1.0]:
+        for z in [-1.02, 1.02]:
+            var rim := _cylinder(0.19 + float(tuning_rims) * 0.012, 0.215, rim_colors[tuning_rims])
+            rim.rotation.z = PI / 2.0
+            rim.position = Vector3(side * 1.01, 0.34, z)
+            root.add_child(rim)
+            for spoke_index in range(5 + tuning_rims):
+                var spoke := _box(Vector3(0.035, 0.22, 0.045), rim_colors[tuning_rims])
+                spoke.position = Vector3(side * 1.125, 0.34, z)
+                spoke.rotation.x = float(spoke_index) * TAU / float(5 + tuning_rims)
+                root.add_child(spoke)
+
+    var hood_color := color.lightened(0.06 + float(tuning_hood) * 0.06)
+    var hood := _box(Vector3(0.52 + float(tuning_hood) * 0.12, 0.035, 0.30 + float(tuning_hood) * 0.09), hood_color)
+    hood.position = Vector3(0, 0.94, -0.96)
+    root.add_child(hood)
+    if tuning_hood > 0:
+        for side in [-1.0, 1.0]:
+            var vent := _box(Vector3(0.10, 0.018, 0.23), Color(0.025, 0.028, 0.032))
+            vent.position = Vector3(side * (0.15 + float(tuning_hood) * 0.06), 0.97, -0.97)
+            root.add_child(vent)
+
+    var spoiler_width := 1.45 + float(tuning_spoiler) * 0.20
+    var spoiler_height := 0.07 + float(tuning_spoiler) * 0.025
+    var spoiler := _box(Vector3(spoiler_width, spoiler_height, 0.22), color.darkened(0.10))
+    spoiler.position = Vector3(0, 1.02 + float(tuning_spoiler) * 0.10, 1.42)
+    root.add_child(spoiler)
+    if tuning_spoiler > 1:
+        for side in [-1.0, 1.0]:
+            var support := _box(Vector3(0.045, 0.20, 0.07), Color(0.07, 0.08, 0.09))
+            support.position = Vector3(side * 0.48, 0.99 + float(tuning_spoiler) * 0.08, 1.34)
+            root.add_child(support)
+
+func _confirm_selected_car() -> void:
     if is_instance_valid(player):
         player.queue_free()
     player = _make_car(selected_car_color, true)
     player.position = Vector3(0, 0.0, PLAYER_Z)
     add_child(player)
+    car_color_button.text = "GARAGE: " + _car_display_name(car_color_index)
+    _close_car_selector()
+
+func _close_car_selector() -> void:
+    selector_active = false
+    if is_instance_valid(selector_panel):
+        selector_panel.queue_free()
+    selector_panel = null
+
 
 func _start_game() -> void:
     menu_active = false
@@ -963,6 +1261,19 @@ func _toggle_pause() -> void:
         touch_steer = 0.0
 
 func _input(event: InputEvent) -> void:
+    if selector_active and is_instance_valid(selector_preview):
+        if event is InputEventScreenTouch:
+            selector_dragging = event.pressed
+            selector_last_x = event.position.x
+        elif event is InputEventScreenDrag and selector_dragging:
+            selector_preview.rotation.y += (event.position.x - selector_last_x) * 0.012
+            selector_last_x = event.position.x
+        elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+            selector_dragging = event.pressed
+            selector_last_x = event.position.x
+        elif event is InputEventMouseMotion and selector_dragging:
+            selector_preview.rotation.y += (event.position.x - selector_last_x) * 0.012
+            selector_last_x = event.position.x
     # Track each finger separately so steering and pedals work at the same time.
     var changed := false
     if event is InputEventScreenTouch:
