@@ -29,6 +29,7 @@ class MainActivity : Activity() {
 }
 
 private data class TrafficCar(var lane: Int, var progress: Float, var color: Int)
+private data class RoadCoin(var lane: Int, var progress: Float)
 
 private class RacingView(context: Context) : View(context), SensorEventListener {
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
@@ -38,6 +39,7 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
     private val p = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rnd = Random(System.currentTimeMillis())
     private val traffic = mutableListOf<TrafficCar>()
+    private val roadCoins = mutableListOf<RoadCoin>()
     private val carColors = intArrayOf(Color.rgb(205,35,40), Color.rgb(35,110,220), Color.rgb(225,225,230))
     private val carNames = arrayOf("MUSTANG GT", "BMW M4", "OPEL ASTRA GTC")
     private val trafficColors = intArrayOf(Color.LTGRAY, Color.rgb(30,30,35), Color.rgb(225,180,35), Color.rgb(30,135,90), Color.WHITE)
@@ -46,6 +48,9 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
     private var distance = 0f
     private val prefs = context.getSharedPreferences("old_racing", Context.MODE_PRIVATE)
     private var bestDistance = prefs.getInt("best_distance", 0)
+    private var wallet = prefs.getInt("wallet_coins", 0)
+    private var engineLevel = prefs.getInt("engine_level", 0)
+    private var coinClock = 0f
     private var crashed = false
     private var paused = false
     private var twoWay = true
@@ -107,6 +112,26 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
         if (!menu && !crashed && !paused) {
             distance += speed*dt*.015f; spawnClock += dt
             if (spawnClock>.8f) { spawnClock=0f; traffic.add(TrafficCar(rnd.nextInt(if(twoWay)4 else 2),0f,trafficColors.random(rnd))) }
+            coinClock += dt
+            if (coinClock > 1.05f) { coinClock = 0f; roadCoins.add(RoadCoin(rnd.nextInt(if(twoWay) 4 else 2), 0f)) }
+            val coinIt = roadCoins.iterator()
+            while (coinIt.hasNext()) {
+                val coin = coinIt.next()
+                coin.progress += dt * (.12f + speed / 850f)
+                if (coin.progress > 1.08f) coinIt.remove() else {
+                    val cx = laneX(w, if (twoWay) coin.lane else coin.lane + 1, coin.progress)
+                    val cy = h * (.28f + coin.progress * .72f)
+                    val radius = w * (.009f + coin.progress * .009f)
+                    paint(Color.rgb(255, 185, 25)); c.drawCircle(cx, cy, radius * 1.35f, p)
+                    paint(Color.rgb(255, 225, 90)); c.drawCircle(cx, cy, radius, p)
+                    label(c, "$", cx, cy + radius * .42f, radius * 1.4f, Color.rgb(125, 75, 5), true)
+                    if (coin.progress > .87f && coin.progress < .97f && coin.lane == playerLane) {
+                        wallet += 1
+                        prefs.edit().putInt("wallet_coins", wallet).apply()
+                        coinIt.remove()
+                    }
+                }
+            }
             val it=traffic.iterator()
             while(it.hasNext()) {
                 val car=it.next(); car.progress += dt*(.12f+speed/850f)
@@ -124,6 +149,7 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
             paint(Color.argb(150,0,0,0)); c.drawRoundRect(w*.02f,h*.03f,w*.32f,h*.18f,14f,14f,p)
             label(c,"$speed KM/H",w*.04f,h*.085f,h*.045f)
             label(c,"DISTANCE ${distance.toInt()} m  •  BEST $bestDistance m",w*.04f,h*.145f,h*.032f)
+            label(c,"● $wallet",w*.36f,h*.09f,h*.045f,Color.rgb(255,205,45))
             button(c,w*.04f,h*.73f,w*.17f,h*.94f,"◀")
             button(c,w*.83f,h*.73f,w*.96f,h*.94f,"▶")
             button(c,w*.38f,h*.82f,w*.48f,h*.96f,"−")
@@ -155,13 +181,15 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
         paint(Color.argb(205,5,12,20)); c.drawRect(0f,0f,w,h,p)
         label(c,"OLD RACING",w/2,h*.22f,h*.13f,Color.rgb(255,190,40),true)
         label(c,"CHOOSE YOUR CAR",w/2,h*.34f,h*.045f,Color.WHITE,true)
+        label(c,"COINS: $wallet   •   ENGINE LEVEL $engineLevel",w/2,h*.40f,h*.032f,Color.rgb(255,210,65),true)
         for(i in 0..2) {
             val x=w*(.27f+i*.23f); drawCar(c,x,h*.51f,w*.06f,carColors[i],true)
             label(c,carNames[i],x,h*.64f,h*.03f,if(i==selectedCar)Color.YELLOW else Color.WHITE,true)
         }
-        button(c,w*.31f,h*.71f,w*.49f,h*.84f,"START")
-        button(c,w*.52f,h*.71f,w*.70f,h*.84f,if(twoWay)"TWO WAY" else "ONE WAY")
-        label(c,"Touch left/right to steer • tap top-left to toggle tilt",w/2,h*.94f,h*.027f,Color.LTGRAY,true)
+        button(c,w*.31f,h*.69f,w*.49f,h*.81f,"START")
+        button(c,w*.52f,h*.69f,w*.70f,h*.81f,if(twoWay)"TWO WAY" else "ONE WAY")
+        button(c,w*.34f,h*.82f,w*.66f,h*.92f,if(engineLevel < 5) "ENGINE + 1  •  ${20 + engineLevel * 10} COINS" else "ENGINE MAX LEVEL")
+        label(c,"Touch left/right to steer • tap top-left to toggle tilt",w/2,h*.97f,h*.025f,Color.LTGRAY,true)
     }
     private fun drawPause(c:Canvas,w:Float,h:Float) {
         paint(Color.argb(190,0,0,0)); c.drawRoundRect(w*.32f,h*.30f,w*.68f,h*.70f,18f,18f,p)
@@ -180,9 +208,17 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
         if(e.action==MotionEvent.ACTION_DOWN) {
             if(menu) {
                 if(e.y>h*.39f && e.y<h*.68f) selectedCar=when { e.x<w*.38f->0; e.x<w*.62f->1; else->2 }
+                else if(e.y>h*.81f) {
+                    val cost = 20 + engineLevel * 10
+                    if (engineLevel < 5 && wallet >= cost) {
+                        wallet -= cost
+                        engineLevel += 1
+                        prefs.edit().putInt("wallet_coins", wallet).putInt("engine_level", engineLevel).apply()
+                    }
+                }
                 else if(e.y>h*.68f) {
                     if(e.x>w*.50f) twoWay=!twoWay else {
-                        menu=false; crashed=false; paused=false; distance=0f; speed=105; playerLane=if(twoWay)1 else 0; traffic.clear()
+                        menu=false; crashed=false; paused=false; distance=0f; speed=105; playerLane=if(twoWay)1 else 0; traffic.clear(); roadCoins.clear(); coinClock=0f
                         repeat(4){traffic.add(TrafficCar(rnd.nextInt(if(twoWay)4 else 2),rnd.nextFloat()*.75f,trafficColors.random(rnd)))}
                     }
                 }
@@ -192,7 +228,7 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
             else if(e.x<w*.25f && e.y<h*.22f) tiltEnabled=!tiltEnabled
             else if(e.x<w*.25f) playerLane=max(0,playerLane-1)
             else if(e.x>w*.75f) playerLane=min(if(twoWay)3 else 1,playerLane+1)
-            else if(e.y>h*.78f) speed=if(e.x<w*.5f)max(50,speed-10) else min(260,speed+10)
+            else if(e.y>h*.78f) speed=if(e.x<w*.5f)max(50,speed-10) else min(260 + engineLevel * 15,speed+10)
             invalidate()
         }
         return true
