@@ -39,28 +39,18 @@ jobs:
       - name: Configure Godot Android export settings
         run: |
           mkdir -p "$HOME/.config/godot"
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path.home() / ".config/godot/editor_settings-4.tres"
-          s = p.read_text() if p.exists() else '[gd_resource type="EditorSettings" format=3]\n\n[resource]\n'
-          settings = {
-              "export/android/android_sdk_path": "/usr/lib/android-sdk",
-              "export/android/java_sdk_path": "/usr/lib/jvm/java-17-openjdk-amd64",
-              "export/android/debug_keystore": str(Path.home() / ".android/debug.keystore"),
-              "export/android/debug_keystore_user": "androiddebugkey",
-              "export/android/debug_keystore_pass": "android",
-          }
-          for key, value in settings.items():
-              import re
-              line = f'{key} = "{value}"'
-              pattern = re.compile(r"^" + re.escape(key) + r"\s*=.*$", re.M)
-              if pattern.search(s):
-                  s = pattern.sub(line, s)
-              else:
-                  s += "\n" + line
-          p.write_text(s)
-          print(p.read_text())
-          PY
+          cat > "$HOME/.config/godot/editor_settings-4.tres" <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "/usr/lib/android-sdk"
+          export/android/java_sdk_path = "/usr/lib/jvm/java-17-openjdk-amd64"
+          export/android/debug_keystore = "$HOME/.android/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+          test -f "$HOME/.config/godot/editor_settings-4.tres"
+          cat "$HOME/.config/godot/editor_settings-4.tres"
       - name: Install project Android build template
         run: |
           mkdir -p godot/android/build
