@@ -42,8 +42,8 @@ var control_mode_button: Button
 var car_color_button: Button
 var selected_car_color := Color(0.08, 0.32, 0.95)
 var car_color_index := 0
-var car_colors: Array[Color] = [Color(0.08, 0.32, 0.95), Color(0.82, 0.08, 0.06), Color(0.86, 0.88, 0.90)]
-var car_names: Array[String] = ["SPORT COUPE", "SPORT SEDAN", "LUXURY SUV"]
+var car_colors: Array[Color] = [Color(0.78, 0.025, 0.02), Color(0.82, 0.035, 0.025), Color(0.12, 0.13, 0.15)]
+var car_names: Array[String] = ["FERRARI F40", "CAMARO ZL1", "DODGE CHARGER"]
 var pause_panel: Control
 var crash_panel: Control
 
@@ -249,10 +249,12 @@ func _make_roadside_tree(base: Vector3, variant: int) -> void:
 func _make_car(color: Color, is_player: bool) -> Node3D:
     var root := Node3D.new()
     # Prefer real CC0 glTF vehicle models; keep procedural fallback for editor/offline runs.
+    # Imported Poly Pizza cars. Add the downloaded GLB files at these exact paths.
+    # If an asset is absent, the safe procedural fallback below keeps the game playable.
     var vehicle_paths: Array[String] = [
-        "res://assets/vehicles/race.glb",
-        "res://assets/vehicles/sedan-sports.glb",
-        "res://assets/vehicles/suv-luxury.glb"
+        "res://assets/cars/ferrari_f40.glb",
+        "res://assets/cars/camaro_zl1_2017.glb",
+        "res://assets/cars/dodge_charger.glb"
     ]
     var vehicle_path := vehicle_paths[car_color_index % vehicle_paths.size()] if is_player else vehicle_paths[randi_range(0, vehicle_paths.size() - 1)]
     if ResourceLoader.exists(vehicle_path):
