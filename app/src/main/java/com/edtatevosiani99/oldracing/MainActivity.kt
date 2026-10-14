@@ -165,13 +165,50 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
         return top+(bottom-top)*t
     }
     private fun drawCar(c:Canvas,x:Float,y:Float,size:Float,col:Int,player:Boolean) {
-        val cw=size*1.25f; val ch=size*1.9f
-        paint(Color.argb(90,0,0,0)); c.drawOval(x-cw*.65f,y+ch*.32f,x+cw*.65f,y+ch*.48f,p)
-        paint(Color.rgb(20,22,25)); c.drawRoundRect(x-cw*.55f,y-ch*.45f,x+cw*.55f,y+ch*.45f,cw*.16f,cw*.16f,p)
-        paint(col); c.drawRoundRect(x-cw*.48f,y-ch*.5f,x+cw*.48f,y+ch*.42f,cw*.18f,cw*.18f,p)
-        paint(Color.rgb(40,70,85)); c.drawRoundRect(x-cw*.34f,y-ch*.28f,x+cw*.34f,y+ch*.08f,cw*.12f,cw*.12f,p)
-        paint(Color.rgb(255,245,205)); c.drawRect(x-cw*.39f,y+ch*.25f,x-cw*.17f,y+ch*.36f,p); c.drawRect(x+cw*.17f,y+ch*.25f,x+cw*.39f,y+ch*.36f,p)
-        if(player) { paint(Color.WHITE); c.drawRect(x-cw*.025f,y-ch*.45f,x+cw*.025f,y+ch*.25f,p) }
+        val cw=size*1.25f
+        val ch=size*1.9f
+        paint(Color.argb(95,0,0,0))
+        c.drawOval(x-cw*.68f,y+ch*.30f,x+cw*.68f,y+ch*.50f,p)
+        // Tires and dark side trim
+        paint(Color.rgb(12,14,17))
+        c.drawRoundRect(x-cw*.59f,y-ch*.31f,x-cw*.37f,y-ch*.04f,cw*.07f,cw*.07f,p)
+        c.drawRoundRect(x+cw*.37f,y-ch*.31f,x+cw*.59f,y-ch*.04f,cw*.07f,cw*.07f,p)
+        c.drawRoundRect(x-cw*.59f,y+ch*.12f,x-cw*.37f,y+ch*.36f,cw*.07f,cw*.07f,p)
+        c.drawRoundRect(x+cw*.37f,y+ch*.12f,x+cw*.59f,y+ch*.36f,cw*.07f,cw*.07f,p)
+        paint(Color.rgb(24,27,31))
+        c.drawRoundRect(x-cw*.52f,y-ch*.49f,x+cw*.52f,y+ch*.45f,cw*.22f,cw*.22f,p)
+        // Sculpted body and hood
+        paint(col)
+        c.drawRoundRect(x-cw*.47f,y-ch*.48f,x+cw*.47f,y+ch*.43f,cw*.22f,cw*.22f,p)
+        val hood=Path().apply {
+            moveTo(x-cw*.31f,y-ch*.42f); lineTo(x+cw*.31f,y-ch*.42f)
+            lineTo(x+cw*.39f,y-ch*.20f); lineTo(x-cw*.39f,y-ch*.20f); close()
+        }
+        paint(Color.argb(100,255,255,255)); c.drawPath(hood,p)
+        // Front and rear glass
+        paint(Color.rgb(35,62,76))
+        c.drawRoundRect(x-cw*.34f,y-ch*.17f,x+cw*.34f,y+ch*.07f,cw*.09f,cw*.09f,p)
+        paint(Color.rgb(22,43,55))
+        c.drawRoundRect(x-cw*.32f,y+ch*.12f,x+cw*.32f,y+ch*.27f,cw*.06f,cw*.06f,p)
+        // Roof highlight and side mirrors
+        paint(Color.argb(110,255,255,255))
+        c.drawRect(x-cw*.025f,y-ch*.16f,x+cw*.025f,y+ch*.08f,p)
+        paint(col)
+        c.drawRoundRect(x-cw*.57f,y-ch*.17f,x-cw*.43f,y-ch*.06f,cw*.035f,cw*.035f,p)
+        c.drawRoundRect(x+cw*.43f,y-ch*.17f,x+cw*.57f,y-ch*.06f,cw*.035f,cw*.035f,p)
+        // Headlights, tail lamps and bumper
+        paint(Color.rgb(255,244,190))
+        c.drawRoundRect(x-cw*.36f,y-ch*.46f,x-cw*.17f,y-ch*.40f,cw*.025f,cw*.025f,p)
+        c.drawRoundRect(x+cw*.17f,y-ch*.46f,x+cw*.36f,y-ch*.40f,cw*.025f,cw*.025f,p)
+        paint(Color.rgb(245,45,35))
+        c.drawRoundRect(x-cw*.36f,y+ch*.34f,x-cw*.17f,y+ch*.40f,cw*.025f,cw*.025f,p)
+        c.drawRoundRect(x+cw*.17f,y+ch*.34f,x+cw*.36f,y+ch*.40f,cw*.025f,cw*.025f,p)
+        paint(Color.rgb(18,20,23))
+        c.drawRoundRect(x-cw*.30f,y+ch*.40f,x+cw*.30f,y+ch*.45f,cw*.025f,cw*.025f,p)
+        if(player) {
+            paint(Color.WHITE)
+            c.drawRect(x-cw*.025f,y-ch*.40f,x+cw*.025f,y+ch*.30f,p)
+        }
     }
     private fun button(c:Canvas,l:Float,t:Float,r:Float,b:Float,s:String) {
         paint(Color.argb(175,10,15,22)); c.drawRoundRect(l,height*t,r,height*b,18f,18f,p)
