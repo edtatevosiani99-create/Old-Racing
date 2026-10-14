@@ -124,7 +124,7 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
                     val radius = w * (.009f + coin.progress * .009f)
                     paint(Color.rgb(255, 185, 25)); c.drawCircle(cx, cy, radius * 1.35f, p)
                     paint(Color.rgb(255, 225, 90)); c.drawCircle(cx, cy, radius, p)
-                    label(c, "$", cx, cy + radius * .42f, radius * 1.4f, Color.rgb(125, 75, 5), true)
+                    label(c, "\\$", cx, cy + radius * .42f, radius * 1.4f, Color.rgb(125, 75, 5), true)
                     if (coin.progress > .87f && coin.progress < .97f && coin.lane == playerLane) {
                         wallet += 1
                         prefs.edit().putInt("wallet_coins", wallet).apply()
