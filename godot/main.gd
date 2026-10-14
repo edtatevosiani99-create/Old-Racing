@@ -166,23 +166,33 @@ func _make_road() -> void:
         for side in [-1.0, 1.0]:
             _make_roadside_tree(Vector3(side * (10.0 + float(i % 3) * 1.3), 0.0, z), i)
 
-    # Distant buildings with layered facades, windows, roofs, and roadside bushes.
-    var building_colors: Array[Color] = [Color(0.55, 0.58, 0.60), Color(0.72, 0.62, 0.48), Color(0.40, 0.49, 0.54), Color(0.64, 0.66, 0.62)]
+    # Roadside city blocks: use actual imported building meshes when available.
+    var building_paths: Array[String] = [
+        "res://assets/environment/city/building-type-a.glb",
+        "res://assets/environment/city/building-type-d.glb",
+        "res://assets/environment/city/building-type-g.glb",
+        "res://assets/environment/city/building-type-k.glb",
+        "res://assets/environment/city/building-type-n.glb"
+    ]
     for i in range(10):
         var building_z := 2.0 - float(i) * 22.0
         for side in [-1.0, 1.0]:
-            var h := 4.5 + float(i % 3) * 1.8
-            var building := _box(Vector3(3.8, h, 4.8), building_colors[i % building_colors.size()])
-            building.position = Vector3(side * (18.0 + float(i % 2) * 2.0), h * 0.5 - 0.1, building_z)
-            add_child(building)
-            var roof := _box(Vector3(4.0, 0.20, 5.0), Color(0.22, 0.24, 0.25))
-            roof.position = Vector3(building.position.x, h + 0.02, building_z)
-            add_child(roof)
-            for floor_index in range(2):
-                for window_side in [-1.0, 1.0]:
-                    var window := _box(Vector3(0.62, 0.72, 0.06), Color(0.18, 0.38, 0.50))
-                    window.position = Vector3(building.position.x + window_side * 0.9, 1.0 + float(floor_index) * 1.35, building_z - 2.44)
-                    add_child(window)
+            var building_path := building_paths[(i + int(side + 1.0)) % building_paths.size()]
+            if ResourceLoader.exists(building_path):
+                var building_scene := load(building_path) as PackedScene
+                if building_scene != null:
+                    var building_model := building_scene.instantiate() as Node3D
+                    if building_model != null:
+                        building_model.position = Vector3(side * (18.0 + float(i % 2) * 2.0), 0.0, building_z)
+                        var building_scale := 2.8 + float(i % 3) * 0.25
+                        building_model.scale = Vector3(building_scale, building_scale, building_scale)
+                        add_child(building_model)
+            else:
+                var h := 4.5 + float(i % 3) * 1.8
+                var building := _box(Vector3(3.8, h, 4.8), Color(0.55, 0.58, 0.60))
+                building.position = Vector3(side * (18.0 + float(i % 2) * 2.0), h * 0.5 - 0.1, building_z)
+                add_child(building)
+            # Greenery and street furniture remain visible in either asset or fallback mode.
             for bush_index in range(3):
                 var bush := MeshInstance3D.new()
                 var bush_mesh := SphereMesh.new()
@@ -190,11 +200,23 @@ func _make_road() -> void:
                 bush_mesh.height = 1.1
                 bush.mesh = bush_mesh
                 bush.material_override = _mat(Color(0.12 + float(bush_index) * 0.025, 0.28 + float(i % 3) * 0.025, 0.13), 0.0, 0.94)
-                bush.position = Vector3(building.position.x + float(bush_index - 1) * 1.25, 0.45, building_z + 3.3)
+                bush.position = Vector3(side * (18.0 + float(i % 2) * 2.0) + float(bush_index - 1) * 1.25, 0.45, building_z + 3.3)
                 bush.scale = Vector3(1.15, 0.8, 0.85)
                 add_child(bush)
 
 func _make_roadside_tree(base: Vector3, variant: int) -> void:
+    # Import proper low-poly tree meshes from the CC0 environment kit when available.
+    var tree_path := "res://assets/environment/city/tree-large.glb" if variant % 3 != 0 else "res://assets/environment/city/tree-small.glb"
+    if ResourceLoader.exists(tree_path):
+        var tree_scene := load(tree_path) as PackedScene
+        if tree_scene != null:
+            var tree_model := tree_scene.instantiate() as Node3D
+            if tree_model != null:
+                tree_model.position = base
+                var tree_scale := 1.55 if variant % 3 != 0 else 1.9
+                tree_model.scale = Vector3(tree_scale, tree_scale, tree_scale)
+                add_child(tree_model)
+                return
     var trunk_height := 2.2 + float(variant % 4) * 0.28
     var trunk := _cylinder(0.22, trunk_height, Color(0.27, 0.16, 0.09))
     trunk.position = base + Vector3(0, trunk_height * 0.5, 0)
@@ -223,6 +245,24 @@ func _make_roadside_tree(base: Vector3, variant: int) -> void:
 
 func _make_car(color: Color, is_player: bool) -> Node3D:
     var root := Node3D.new()
+    # Prefer real CC0 glTF vehicle models; keep procedural fallback for editor/offline runs.
+    var vehicle_paths: Array[String] = [
+        "res://assets/vehicles/race.glb",
+        "res://assets/vehicles/sedan-sports.glb",
+        "res://assets/vehicles/suv-luxury.glb"
+    ]
+    var vehicle_path := vehicle_paths[car_color_index % vehicle_paths.size()] if is_player else vehicle_paths[randi_range(0, vehicle_paths.size() - 1)]
+    if ResourceLoader.exists(vehicle_path):
+        var vehicle_scene := load(vehicle_path) as PackedScene
+        if vehicle_scene != null:
+            var vehicle_model := vehicle_scene.instantiate() as Node3D
+            if vehicle_model != null:
+                vehicle_model.scale = Vector3(1.10, 1.10, 1.10)
+                vehicle_model.position = Vector3(0, 0.02, 0)
+                root.add_child(vehicle_model)
+                if is_player:
+                    root.name = "PlayerCar"
+                return root
     # Smooth, rounded shell gives the car a less toy-like silhouette than a plain box.
     var body := MeshInstance3D.new()
     var body_mesh := SphereMesh.new()
