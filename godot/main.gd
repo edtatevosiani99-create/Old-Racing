@@ -275,65 +275,137 @@ func _make_menu() -> void:
     menu_panel.z_index = 20
     add_child(menu_panel)
 
+    # Traffic-racer-inspired layout: keep the 3D road and car visible behind a sleek UI.
     var shade := ColorRect.new()
     shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    shade.color = Color(0.015, 0.025, 0.045, 0.90)
+    shade.color = Color(0.015, 0.025, 0.045, 0.58)
     menu_panel.add_child(shade)
 
+    var top_bar := ColorRect.new()
+    top_bar.anchor_right = 1.0
+    top_bar.anchor_bottom = 0.15
+    top_bar.color = Color(0.015, 0.025, 0.045, 0.82)
+    menu_panel.add_child(top_bar)
+
     var title := Label.new()
-    title.text = "OLD RACING 3D"
-    title.anchor_left = 0.20
-    title.anchor_right = 0.80
-    title.anchor_top = 0.13
-    title.anchor_bottom = 0.25
-    title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    title.text = "OLD RACING"
+    title.anchor_left = 0.045
+    title.anchor_right = 0.52
+    title.anchor_top = 0.025
+    title.anchor_bottom = 0.095
     title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    title.add_theme_font_size_override("font_size", 44)
-    title.add_theme_color_override("font_color", Color(0.96, 0.98, 1.0))
+    title.add_theme_font_size_override("font_size", 38)
+    title.add_theme_color_override("font_color", Color(1.0, 0.96, 0.82))
+    title.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+    title.add_theme_constant_override("shadow_offset_x", 2)
+    title.add_theme_constant_override("shadow_offset_y", 2)
     menu_panel.add_child(title)
 
-    var subtitle := Label.new()
-    subtitle.text = "CHOOSE YOUR CONTROL"
-    subtitle.anchor_left = 0.25
-    subtitle.anchor_right = 0.75
-    subtitle.anchor_top = 0.31
-    subtitle.anchor_bottom = 0.39
-    subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    subtitle.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    subtitle.add_theme_font_size_override("font_size", 23)
-    subtitle.add_theme_color_override("font_color", Color(0.72, 0.84, 0.98))
-    menu_panel.add_child(subtitle)
+    var edition := Label.new()
+    edition.text = "3D  •  HIGHWAY RACING"
+    edition.anchor_left = 0.047
+    edition.anchor_right = 0.55
+    edition.anchor_top = 0.085
+    edition.anchor_bottom = 0.135
+    edition.add_theme_font_size_override("font_size", 16)
+    edition.add_theme_color_override("font_color", Color(0.48, 0.84, 1.0))
+    menu_panel.add_child(edition)
 
-    control_mode_button = Button.new()
-    control_mode_button.text = "STEERING: BUTTONS"
-    control_mode_button.anchor_left = 0.30
-    control_mode_button.anchor_right = 0.70
-    control_mode_button.anchor_top = 0.43
-    control_mode_button.anchor_bottom = 0.56
-    control_mode_button.add_theme_font_size_override("font_size", 22)
-    control_mode_button.pressed.connect(_toggle_control_mode)
-    menu_panel.add_child(control_mode_button)
+    # Right-side glass panel keeps the vehicle and scenery visible on the left.
+    var card := Panel.new()
+    card.anchor_left = 0.66
+    card.anchor_right = 0.965
+    card.anchor_top = 0.19
+    card.anchor_bottom = 0.94
+    var card_style := StyleBoxFlat.new()
+    card_style.bg_color = Color(0.025, 0.045, 0.075, 0.90)
+    card_style.border_color = Color(0.22, 0.62, 0.92, 0.85)
+    card_style.set_border_width_all(2)
+    card_style.set_corner_radius_all(14)
+    card.add_theme_stylebox_override("panel", card_style)
+    menu_panel.add_child(card)
 
-    car_color_button = Button.new()
-    car_color_button.text = "CAR: " + car_names[car_color_index]
-    car_color_button.anchor_left = 0.30
-    car_color_button.anchor_right = 0.70
-    car_color_button.anchor_top = 0.57
-    car_color_button.anchor_bottom = 0.67
-    car_color_button.add_theme_font_size_override("font_size", 20)
-    car_color_button.pressed.connect(_cycle_car_color)
-    menu_panel.add_child(car_color_button)
+    var section := Label.new()
+    section.text = "MAIN MENU"
+    section.anchor_left = 0.69
+    section.anchor_right = 0.94
+    section.anchor_top = 0.22
+    section.anchor_bottom = 0.29
+    section.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    section.add_theme_font_size_override("font_size", 25)
+    section.add_theme_color_override("font_color", Color(0.95, 0.98, 1.0))
+    menu_panel.add_child(section)
 
-    var start_button := Button.new()
-    start_button.text = "PLAY"
-    start_button.anchor_left = 0.36
-    start_button.anchor_right = 0.64
-    start_button.anchor_top = 0.73
-    start_button.anchor_bottom = 0.88
-    start_button.add_theme_font_size_override("font_size", 30)
+    var hint := Label.new()
+    hint.text = "PICK A CAR. HIT THE ROAD."
+    hint.anchor_left = 0.685
+    hint.anchor_right = 0.945
+    hint.anchor_top = 0.29
+    hint.anchor_bottom = 0.34
+    hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    hint.add_theme_font_size_override("font_size", 12)
+    hint.add_theme_color_override("font_color", Color(0.58, 0.76, 0.90))
+    menu_panel.add_child(hint)
+
+    var start_button := _menu_button("▶   PLAY", 0.695, 0.37, 0.93, 0.49, 29, true)
     start_button.pressed.connect(_start_game)
     menu_panel.add_child(start_button)
 
+    var garage_button := _menu_button("GARAGE  /  CHANGE CAR", 0.695, 0.515, 0.93, 0.605, 17, false)
+    garage_button.pressed.connect(_cycle_car_color)
+    menu_panel.add_child(garage_button)
+
+    car_color_button = garage_button
+
+    var upgrade_button := _menu_button("UPGRADES", 0.695, 0.625, 0.93, 0.715, 18, false)
+    upgrade_button.pressed.connect(_show_upgrades)
+    menu_panel.add_child(upgrade_button)
+
+    control_mode_button = _menu_button("STEERING: BUTTONS", 0.695, 0.735, 0.93, 0.825, 16, false)
+    control_mode_button.pressed.connect(_toggle_control_mode)
+    menu_panel.add_child(control_mode_button)
+
+    var footer := Label.new()
+    footer.text = "ENDLESS HIGHWAY  •  AVOID TRAFFIC"
+    footer.anchor_left = 0.69
+    footer.anchor_right = 0.94
+    footer.anchor_top = 0.855
+    footer.anchor_bottom = 0.91
+    footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    footer.add_theme_font_size_override("font_size", 11)
+    footer.add_theme_color_override("font_color", Color(0.57, 0.70, 0.81))
+    menu_panel.add_child(footer)
+
+func _menu_button(label_text: String, left: float, top: float, right: float, bottom: float, font_size: int, primary: bool) -> Button:
+    var b := Button.new()
+    b.text = label_text
+    b.anchor_left = left
+    b.anchor_top = top
+    b.anchor_right = right
+    b.anchor_bottom = bottom
+    b.add_theme_font_size_override("font_size", font_size)
+    var normal := StyleBoxFlat.new()
+    normal.bg_color = Color(0.02, 0.48, 0.86, 0.96) if primary else Color(0.07, 0.12, 0.18, 0.96)
+    normal.border_color = Color(0.40, 0.82, 1.0, 1.0) if primary else Color(0.24, 0.48, 0.66, 0.95)
+    normal.set_border_width_all(2)
+    normal.set_corner_radius_all(10)
+    normal.content_margin_left = 8
+    normal.content_margin_right = 8
+    b.add_theme_stylebox_override("normal", normal)
+    var hover := normal.duplicate() as StyleBoxFlat
+    hover.bg_color = Color(0.05, 0.62, 1.0, 1.0) if primary else Color(0.10, 0.22, 0.32, 1.0)
+    b.add_theme_stylebox_override("hover", hover)
+    b.add_theme_color_override("font_color", Color.WHITE)
+    b.add_theme_color_override("font_hover_color", Color(1.0, 0.96, 0.70))
+    return b
+
+func _show_upgrades() -> void:
+    # Simple working upgrade feedback for the current prototype.
+    var message := "UPGRADES  •  ENGINE + HANDLING"
+    message_label.text = message
+    await get_tree().create_timer(2.0).timeout
+    if is_instance_valid(message_label) and menu_active:
+        message_label.text = ""
 func _toggle_control_mode() -> void:
     tilt_mode = not tilt_mode
     control_mode_button.text = "STEERING: TILT" if tilt_mode else "STEERING: BUTTONS"
@@ -342,7 +414,7 @@ func _toggle_control_mode() -> void:
 func _cycle_car_color() -> void:
     car_color_index = (car_color_index + 1) % car_colors.size()
     selected_car_color = car_colors[car_color_index]
-    car_color_button.text = "CAR: " + car_names[car_color_index]
+    car_color_button.text = "GARAGE: " + car_names[car_color_index]
     if is_instance_valid(player):
         player.queue_free()
     player = _make_car(selected_car_color, true)
