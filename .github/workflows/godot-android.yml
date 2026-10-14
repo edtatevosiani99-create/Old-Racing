@@ -24,7 +24,12 @@ jobs:
           mkdir -p godot/assets/vehicles godot/assets/environment
           cp -R "/tmp/kenney-car-kit/Models/GLB format/." godot/assets/vehicles/
           cp -R "/tmp/kenney-car-kit/Models/City" godot/assets/environment/city
-          cp /tmp/kenney-car-kit/License.txt godot/assets/THIRD_PARTY_LICENSES.txt
+          cp /tmp/kenney-car-kit/License.txt /tmp/kenney-car-kit-LICENSE.txt
+          if [ -f godot/assets/THIRD_PARTY_LICENSES.txt ]; then
+            cat /tmp/kenney-car-kit-LICENSE.txt >> godot/assets/THIRD_PARTY_LICENSES.txt
+          else
+            cp /tmp/kenney-car-kit-LICENSE.txt godot/assets/THIRD_PARTY_LICENSES.txt
+          fi
           # Add Kenney Nature Kit (official CC0 archive) for more varied roadside trees.
           wget -q https://kenney.nl/media/pages/assets/nature-kit/37ac38a37b-1677698939/kenney_nature-kit.zip -O /tmp/kenney_nature-kit.zip
           mkdir -p /tmp/kenney-nature-kit godot/assets/environment/nature
