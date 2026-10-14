@@ -121,7 +121,10 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
             if (brakeHeld) speed = max(45, speed - (125f * dt).toInt().coerceAtLeast(1))
             if (!tiltEnabled) steering += steerDirection * dt * 2.6f
             else steering += steerDirection * dt * 2.6f
-            steering = steering.coerceIn(-1f, 1f)
+            val baseLaneIndex = if (twoWay) playerLane else playerLane + 1
+            val minSteering = if (twoWay) -baseLaneIndex.toFloat() else (1 - baseLaneIndex).toFloat()
+            val maxSteering = if (twoWay) (3 - baseLaneIndex).toFloat() else (2 - baseLaneIndex).toFloat()
+            steering = steering.coerceIn(minSteering, maxSteering)
             if (spawnClock>.8f) { spawnClock=0f; traffic.add(TrafficCar(rnd.nextInt(if(twoWay)4 else 2),0f,trafficColors.random(rnd))) }
             coinClock += dt
             if (coinClock > 1.05f) { coinClock = 0f; roadCoins.add(RoadCoin(rnd.nextInt(if(twoWay) 4 else 2), 0f)) }
@@ -148,7 +151,10 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
                 val car=it.next(); car.progress += dt*(.12f+speed/850f)
                 if(car.progress>1.15f) it.remove() else {
                     drawCar(c,laneX(w,if(twoWay) car.lane else car.lane+1,car.progress),h*(.28f+car.progress*.72f),w*(.018f+car.progress*.035f),car.color,false)
-                    if(car.progress>.82f && car.progress<.99f && car.lane==playerLane) crashed=true
+                    val trafficX = laneX(w, if (twoWay) car.lane else car.lane + 1, car.progress)
+                    val currentPlayerLane = if (twoWay) playerLane else playerLane + 1
+                    val currentPlayerX = (laneX(w, currentPlayerLane, .91f) + steering * w * .205f).coerceIn(w * .13f, w * .87f)
+                    if (car.progress > .82f && car.progress < .99f && abs(trafficX - currentPlayerX) < w * .075f) crashed = true
                 }
             }
         } else {
@@ -157,7 +163,7 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
         if (!menu) {
             playerLane=playerLane.coerceIn(0,if(twoWay)3 else 1)
             val basePlayerX = laneX(w,if(twoWay) playerLane else playerLane+1,.91f)
-            val playerX = (basePlayerX + steering * w * .085f).coerceIn(w*.13f, w*.87f)
+            val playerX = (basePlayerX + steering * w * .205f).coerceIn(w*.13f, w*.87f)
             drawCar(c,playerX,h*.86f,w*.07f,carColors[selectedCar],true)
             paint(Color.argb(150,0,0,0)); c.drawRoundRect(w*.02f,h*.03f,w*.32f,h*.18f,14f,14f,p)
             label(c,"$speed KM/H",w*.04f,h*.085f,h*.045f)
