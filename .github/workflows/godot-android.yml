@@ -37,7 +37,8 @@ jobs:
       - name: Validate Godot project and import resources
         run: godot --headless --editor --path godot --quit
       - name: Install project Android build template
-        run: godot --headless --editor --path godot --install-android-build-template
+        timeout-minutes: 3
+        run: timeout 150s godot --headless --editor --path godot --install-android-build-template --quit
       - name: Export Android APK
         run: |
           mkdir -p godot/build
