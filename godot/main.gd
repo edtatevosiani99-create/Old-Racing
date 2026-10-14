@@ -50,6 +50,7 @@ var pause_panel: Control
 var crash_panel: Control
 var selector_panel: Control
 var selector_active := false
+var selector_tuning_visible := false
 var selector_viewport: SubViewport
 var selector_preview: Node3D
 var selector_car_label: Label
@@ -785,6 +786,7 @@ func _open_car_selector() -> void:
     if is_instance_valid(selector_panel):
         selector_panel.queue_free()
     selector_active = true
+    selector_tuning_visible = false
     selector_panel = Control.new()
     selector_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     selector_panel.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -923,14 +925,9 @@ func _open_car_selector() -> void:
     next.pressed.connect(func(): _selector_change_car(1))
     selector_panel.add_child(next)
 
-    var tuning_title := Label.new()
-    tuning_title.text = "TUNING"
-    tuning_title.anchor_left = 0.72
-    tuning_title.anchor_top = 0.37
-    tuning_title.anchor_right = 0.96
-    tuning_title.anchor_bottom = 0.415
-    tuning_title.add_theme_font_size_override("font_size", 23)
+    var tuning_title := _menu_button("TUNING  ⚙", 0.72, 0.365, 0.97, 0.42, 19, false)
     tuning_title.add_theme_color_override("font_color", Color(1.0, 0.78, 0.18))
+    tuning_title.pressed.connect(_toggle_selector_tuning)
     selector_panel.add_child(tuning_title)
 
     selector_color_label = _selector_option_button("PAINT: " + tuning_color_names[paint_index % tuning_color_names.size()], 0.72, 0.425, 0.97, 0.49)
@@ -961,6 +958,22 @@ func _open_car_selector() -> void:
     selector_panel.add_child(back_button)
     _refresh_selector_preview()
 
+func _toggle_selector_tuning() -> void:
+    selector_tuning_visible = not selector_tuning_visible
+    _set_tuning_options_visible()
+
+func _set_tuning_options_visible() -> void:
+    if is_instance_valid(selector_color_label):
+        selector_color_label.visible = selector_tuning_visible
+    if is_instance_valid(selector_bumper_label):
+        selector_bumper_label.visible = selector_tuning_visible
+    if is_instance_valid(selector_rims_label):
+        selector_rims_label.visible = selector_tuning_visible
+    if is_instance_valid(selector_hood_label):
+        selector_hood_label.visible = selector_tuning_visible
+    if is_instance_valid(selector_spoiler_label):
+        selector_spoiler_label.visible = selector_tuning_visible
+
 func _selector_option_button(label_text: String, left: float, top: float, right: float, bottom: float) -> Button:
     return _menu_button(label_text, left, top, right, bottom, 13, false)
 
@@ -980,6 +993,7 @@ func _refresh_selector_preview() -> void:
     selector_rims_label.text = "WHEELS: %d" % (tuning_rims + 1)
     selector_hood_label.text = "HOOD: %d" % (tuning_hood + 1)
     selector_spoiler_label.text = "SPOILER: %d" % (tuning_spoiler + 1)
+    _set_tuning_options_visible()
 
 func _selector_change_car(direction: int) -> void:
     selected_car_index = posmod(selected_car_index + direction, car_names.size())
