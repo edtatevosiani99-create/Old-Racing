@@ -1060,7 +1060,8 @@ func _collect_vehicle_bounds(node: Node, parent_transform: Transform3D, bounds_d
                 bounds_data[0] = true
                 bounds_data[1] = mesh_bounds
             else:
-                bounds_data[1] = (bounds_data[1] as AABB).merge(mesh_bounds)
+                var accumulated_bounds: AABB = bounds_data[1]
+                bounds_data[1] = accumulated_bounds.merge(mesh_bounds)
     for child in node.get_children():
         _collect_vehicle_bounds(child, current_transform, bounds_data)
 
