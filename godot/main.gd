@@ -222,8 +222,15 @@ func _make_roadside_tree(base: Vector3, variant: int) -> void:
 
 func _make_car(color: Color, is_player: bool) -> Node3D:
     var root := Node3D.new()
-    var body := _box(Vector3(1.72, 0.42, 3.25), color)
+    # Smooth, rounded shell gives the car a less toy-like silhouette than a plain box.
+    var body := MeshInstance3D.new()
+    var body_mesh := SphereMesh.new()
+    body_mesh.radius = 1.0
+    body_mesh.height = 2.0
+    body.mesh = body_mesh
+    body.material_override = _mat(color, 0.38, 0.27)
     body.position.y = 0.59
+    body.scale = Vector3(0.88, 0.29, 1.62)
     root.add_child(body)
     var lower_skirt := _box(Vector3(1.78, 0.16, 2.55), color.darkened(0.22))
     lower_skirt.position = Vector3(0, 0.38, 0.02)
@@ -235,11 +242,23 @@ func _make_car(color: Color, is_player: bool) -> Node3D:
         var intake := _box(Vector3(0.30, 0.19, 0.04), Color(0.025, 0.03, 0.035))
         intake.position = Vector3(x, 0.46, -1.65)
         root.add_child(intake)
-    var hood := _box(Vector3(1.42, 0.22, 0.95), color.lightened(0.12))
-    hood.position = Vector3(0, 0.84, -0.82)
+    var hood := MeshInstance3D.new()
+    var hood_mesh := SphereMesh.new()
+    hood_mesh.radius = 1.0
+    hood_mesh.height = 2.0
+    hood.mesh = hood_mesh
+    hood.material_override = _mat(color.lightened(0.10), 0.42, 0.24)
+    hood.position = Vector3(0, 0.82, -0.82)
+    hood.scale = Vector3(0.72, 0.105, 0.52)
     root.add_child(hood)
-    var roof := _box(Vector3(1.10, 0.43, 1.30), Color(0.055, 0.085, 0.10))
+    var roof := MeshInstance3D.new()
+    var roof_mesh := SphereMesh.new()
+    roof_mesh.radius = 1.0
+    roof_mesh.height = 2.0
+    roof.mesh = roof_mesh
+    roof.material_override = _mat(Color(0.055, 0.085, 0.10), 0.18, 0.20)
     roof.position = Vector3(0, 1.04, 0.18)
+    roof.scale = Vector3(0.56, 0.22, 0.66)
     root.add_child(roof)
     var rear_glass := _box(Vector3(0.92, 0.25, 0.06), Color(0.20, 0.36, 0.42))
     rear_glass.position = Vector3(0, 1.08, 0.86)
@@ -284,6 +303,7 @@ func _make_car(color: Color, is_player: bool) -> Node3D:
             rim.position = Vector3(x * 1.01, 0.34, z)
             root.add_child(rim)
     var front_light := _box(Vector3(0.42, 0.12, 0.07), Color(0.94, 0.98, 1.0))
+    front_light.material_override = _mat(Color(0.92, 0.97, 1.0), 0.12, 0.18)
     front_light.position = Vector3(-0.52, 0.70, -1.61)
     root.add_child(front_light)
     var front_light2 := front_light.duplicate() as MeshInstance3D
