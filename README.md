@@ -14,7 +14,9 @@ An original Android highway-racing prototype built with Kotlin and a custom Canv
 - GitHub Actions builds a debug APK artifact automatically on pushes and manual workflow runs.
 
 ## Build and download
-Open the repository's **Actions** tab, choose the latest **Android APK** run, and download the `old-racing-debug-apk` artifact. GitHub provides the artifact as a ZIP containing the debug APK.
+For the **real 3D Godot build**, open the repository's **Actions** tab, choose the latest **Godot 3D Android APK** run, and download the `old-racing-3d-android-apk` artifact. The ZIP contains `OLD-RACING-3D.apk`. Install the APK itself after extracting it from the ZIP.
+
+The separate `old-racing-debug-apk` artifact comes from the older Kotlin/Canvas prototype and is not the real 3D build.
 
 ## Important
 This first version is a pseudo-3D prototype, not a full 3D game. Realistic licensed 3D models, engine audio, a visual garage and polished effects remain future improvements. The current coin wallet and engine upgrades are prototype systems. Real car models require appropriately licensed assets.
