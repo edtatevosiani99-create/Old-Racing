@@ -860,7 +860,7 @@ func _open_car_selector() -> void:
 
     var studio_floor := MeshInstance3D.new()
     var floor_mesh := PlaneMesh.new()
-    floor_mesh.size = Vector2(16.0, 16.0)
+    floor_mesh.size = Vector2(22.0, 22.0)
     studio_floor.mesh = floor_mesh
     studio_floor.position.y = -0.08
     studio_floor.material_override = _mat(Color(0.045, 0.065, 0.085), 0.28, 0.42)
@@ -883,9 +883,10 @@ func _open_car_selector() -> void:
     preview_world.add_child(rim_light)
 
     var studio_camera := Camera3D.new()
-    studio_camera.position = Vector3(3.5, 2.45, 5.0)
-    studio_camera.look_at(Vector3(0, 0.62, 0), Vector3.UP)
-    studio_camera.fov = 46.0
+    # Wider studio framing keeps the complete car visible in the selector.
+    studio_camera.position = Vector3(5.2, 3.3, 7.6)
+    studio_camera.look_at(Vector3(0, 0.72, 0), Vector3.UP)
+    studio_camera.fov = 38.0
     preview_world.add_child(studio_camera)
     studio_camera.current = true
 
