@@ -62,6 +62,8 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
     private var menu = true
     private var spawnClock = 0f
     private var lastTime = System.currentTimeMillis()
+    // Keep each finger independent: lifting one finger must not release another control.
+    private val activePointers = mutableMapOf<Int, Pair<Float, Float>>()
 
     init { isFocusable = true }
 
@@ -254,53 +256,124 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
     override fun onTouchEvent(e: MotionEvent): Boolean {
         val w = width.toFloat()
         val h = height.toFloat()
+        if (w <= 0f || h <= 0f) return true
+
         when (e.actionMasked) {
-            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                if (menu) {
-                    if (e.actionMasked == MotionEvent.ACTION_DOWN) {
-                        if (e.y > h * .39f && e.y < h * .68f) {
-                            selectedCar = when { e.x < w * .38f -> 0; e.x < w * .62f -> 1; else -> 2 }
-                        } else if (e.y > h * .81f) {
+            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
+                val index = e.actionIndex
+                activePointers[e.getPointerId(index)] = e.getX(index) to e.getY(index)
+
+                // Menus and toggle buttons react only to a new tap, not every move.
+                if (e.actionMasked == MotionEvent.ACTION_DOWN) {
+                    val x = e.x
+                    val y = e.y
+                    if (menu) {
+                        if (y > h * .39f && y < h * .68f) {
+                            selectedCar = when {
+                                x < w * .38f -> 0
+                                x < w * .62f -> 1
+                                else -> 2
+                            }
+                        } else if (y > h * .81f) {
                             val cost = 20 + engineLevel * 10
                             if (engineLevel < 5 && wallet >= cost) {
-                                wallet -= cost; engineLevel += 1
+                                wallet -= cost
+                                engineLevel += 1
                                 prefs.edit().putInt("wallet_coins", wallet).putInt("engine_level", engineLevel).apply()
                             }
-                        } else if (e.y > h * .68f) {
-                            if (e.x > w * .50f) twoWay = !twoWay
-                            else {
-                                menu = false; crashed = false; paused = false; distance = 0f; speed = 105
-                                playerLane = if (twoWay) 1 else 0; steering = 0f
-                                traffic.clear(); roadCoins.clear(); coinClock = 0f
-                                repeat(4) { traffic.add(TrafficCar(rnd.nextInt(if (twoWay) 4 else 2), rnd.nextFloat() * .75f, trafficColors.random(rnd))) }
+                        } else if (y > h * .68f) {
+                            if (x > w * .50f) {
+                                twoWay = !twoWay
+                            } else {
+                                menu = false
+                                crashed = false
+                                paused = false
+                                distance = 0f
+                                speed = 105
+                                playerLane = if (twoWay) 1 else 0
+                                steering = 0f
+                                activePointers.clear()
+                                traffic.clear()
+                                roadCoins.clear()
+                                coinClock = 0f
+                                gasHeld = false
+                                brakeHeld = false
+                                steerDirection = 0f
+                                repeat(4) {
+                                    traffic.add(TrafficCar(rnd.nextInt(if (twoWay) 4 else 2), rnd.nextFloat() * .75f, trafficColors.random(rnd)))
+                                }
                             }
                         }
+                    } else if (crashed) {
+                        menu = true
+                        paused = false
+                        gasHeld = false
+                        brakeHeld = false
+                        steerDirection = 0f
+                        activePointers.clear()
+                    } else if (y < h * .20f && x > w * .72f) {
+                        paused = !paused
+                        if (paused) {
+                            gasHeld = false
+                            brakeHeld = false
+                            steerDirection = 0f
+                            activePointers.clear()
+                        }
+                    } else if (paused) {
+                        paused = false
+                    } else if (y < h * .20f && x < w * .25f) {
+                        tiltEnabled = !tiltEnabled
+                        if (tiltEnabled) steerDirection = 0f
                     }
-                } else if (crashed) {
-                    if (e.actionMasked == MotionEvent.ACTION_DOWN) { menu = true; paused = false }
-                } else if (e.y < h * .20f && e.x > w * .72f) {
-                    if (e.actionMasked == MotionEvent.ACTION_DOWN) paused = !paused
-                } else if (paused) {
-                    if (e.actionMasked == MotionEvent.ACTION_DOWN) paused = false
-                } else if (e.y > h * .72f && e.x >= w * .29f && e.x < w * .49f) {
-                    brakeHeld = true; gasHeld = false; steerDirection = 0f
-                } else if (e.y > h * .72f && e.x >= w * .51f && e.x < w * .72f) {
-                    gasHeld = true; brakeHeld = false; steerDirection = 0f
-                } else if (e.y < h * .20f && e.x < w * .25f && e.actionMasked == MotionEvent.ACTION_DOWN) {
-                    tiltEnabled = !tiltEnabled
-                } else if (!tiltEnabled) {
-                    if (e.x < w * .28f) steerDirection = -1f
-                    else if (e.x > w * .72f) steerDirection = 1f
-                    else steerDirection = 0f
                 }
-                invalidate()
+            }
+            MotionEvent.ACTION_MOVE -> {
+                for (i in 0 until e.pointerCount) {
+                    activePointers[e.getPointerId(i)] = e.getX(i) to e.getY(i)
+                }
+            }
+            MotionEvent.ACTION_POINTER_UP -> {
+                activePointers.remove(e.getPointerId(e.actionIndex))
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                gasHeld = false
-                brakeHeld = false
-                steerDirection = 0f
+                activePointers.clear()
             }
         }
+
+        refreshHeldControls(h)
+        invalidate()
         return true
+    }
+
+    private fun refreshHeldControls(h: Float) {
+        gasHeld = false
+        brakeHeld = false
+        var leftHeld = false
+        var rightHeld = false
+
+        if (!menu && !crashed && !paused) {
+            for ((_, point) in activePointers) {
+                val x = point.first
+                val y = point.second
+                if (y < h * .20f) continue
+                if (y >= h * .72f && x >= width * .29f && x < width * .49f) {
+                    brakeHeld = true
+                } else if (y >= h * .72f && x >= width * .51f && x < width * .72f) {
+                    gasHeld = true
+                } else if (!tiltEnabled && x < width * .28f) {
+                    leftHeld = true
+                } else if (!tiltEnabled && x > width * .72f) {
+                    rightHeld = true
+                }
+            }
+        }
+
+        // Two fingers can hold accelerator/brake while a third finger steers.
+        steerDirection = when {
+            tiltEnabled -> steerDirection
+            leftHeld && !rightHeld -> -1f
+            rightHeld && !leftHeld -> 1f
+            else -> 0f
+        }
     }
 }
