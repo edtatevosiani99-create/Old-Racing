@@ -92,7 +92,7 @@ jobs:
           export GODOT_ANDROID_KEYSTORE_DEBUG_USER="androiddebugkey"
           export GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD="android"
           godot --headless --verbose --editor --path godot --quit
-          godot --headless --verbose --path godot --export-debug "Android" godot/build/OLD-RACING-3D.apk
+          godot --headless --verbose --path godot --export-debug "Android" "$GITHUB_WORKSPACE/godot/build/OLD-RACING-3D.apk"
           test -s godot/build/OLD-RACING-3D.apk
       - name: Sign and verify APK for Android installation
         run: |
