@@ -74,6 +74,11 @@ jobs:
           ls -la "$SDK_PATH"
           find "$SDK_PATH" -maxdepth 3 -type d \( -name "platform-tools" -o -name "build-tools" -o -name "platforms" \) -print
           cat "$HOME/.config/godot/editor_settings-4.tres"
+      - name: Re-scan project with Android SDK configured
+        run: |
+          godot --headless --editor --path godot --quit
+          test -f "${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/lib/android-sdk}}/platforms/android-34/android.jar"
+          test -x "${JAVA_HOME}/bin/java"
       - name: Verify default Android export templates
         run: |
           ls -lh "$HOME/.local/share/godot/export_templates/4.3.stable/"
@@ -86,6 +91,7 @@ jobs:
           export GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$HOME/.android/debug.keystore"
           export GODOT_ANDROID_KEYSTORE_DEBUG_USER="androiddebugkey"
           export GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD="android"
+          godot --headless --verbose --editor --path godot --quit
           godot --headless --verbose --path godot --export-debug "Android" godot/build/OLD-RACING-3D.apk
           test -s godot/build/OLD-RACING-3D.apk
       - name: Upload 3D APK
