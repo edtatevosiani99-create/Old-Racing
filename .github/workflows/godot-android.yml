@@ -26,17 +26,21 @@ jobs:
           unzip -q /tmp/templates.tpz -d /tmp/godot-templates
           cp /tmp/godot-templates/templates/android_debug.apk "$HOME/.local/share/godot/export_templates/4.3.stable/"
           cp /tmp/godot-templates/templates/android_release.apk "$HOME/.local/share/godot/export_templates/4.3.stable/"
-      - name: Configure Java and Android signing
+          cp /tmp/godot-templates/templates/android_source.zip "$HOME/.local/share/godot/export_templates/4.3.stable/"
+      - name: Configure Java, Android SDK and signing
         run: |
           export JAVA_HOME="$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")"
           echo "JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
+          mkdir -p "$HOME/.android"
+          test -n "$ANDROID_HOME" || test -n "$ANDROID_SDK_ROOT"
           keytool -genkeypair -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" || true
       - name: Validate Godot project and import resources
         run: godot --headless --editor --path godot --quit
       - name: Export Android APK
         run: |
           mkdir -p godot/build
-          godot --headless --path godot --export-debug "Android" godot/build/OLD-RACING-3D.apk
+          godot --headless --verbose --path godot --export-debug "Android" godot/build/OLD-RACING-3D.apk
+          test -s godot/build/OLD-RACING-3D.apk
       - name: Upload 3D APK
         uses: actions/upload-artifact@v4
         with:
