@@ -43,7 +43,7 @@ var car_color_button: Button
 var selected_car_color := Color(0.08, 0.32, 0.95)
 var car_color_index := 2
 var selected_car_index := 0
-var paint_index := 0
+var paint_index := 1
 var car_colors: Array[Color] = [Color(0.78, 0.025, 0.02), Color(0.82, 0.035, 0.025), Color(0.12, 0.13, 0.15)]
 var car_names: Array[String] = ["FERRARI F40", "CAMARO ZL1", "DODGE CHARGER"]
 var pause_panel: Control
@@ -304,6 +304,7 @@ func _make_car(color: Color, is_player: bool) -> Node3D:
             if vehicle_model != null:
                 vehicle_model.scale = Vector3(1.10, 1.10, 1.10)
                 vehicle_model.position = Vector3(0, 0.02, 0)
+                _tint_vehicle_paint(vehicle_model, color)
                 root.add_child(vehicle_model)
                 _add_tuning_parts(root, color)
                 if is_player:
@@ -1005,6 +1006,32 @@ func _selector_cycle_hood() -> void:
 func _selector_cycle_spoiler() -> void:
     tuning_spoiler = (tuning_spoiler + 1) % 4
     _refresh_selector_preview()
+
+func _tint_vehicle_paint(node: Node, color: Color) -> void:
+    # Recolor bright painted body surfaces on imported cars while preserving dark rubber, glass, and trim.
+    if node is MeshInstance3D:
+        var mesh_instance := node as MeshInstance3D
+        if mesh_instance.mesh != null:
+            for surface_index in range(mesh_instance.mesh.get_surface_count()):
+                var material := mesh_instance.get_active_material(surface_index)
+                if material is StandardMaterial3D:
+                    var source := material as StandardMaterial3D
+                    var material_name := source.resource_name.to_lower()
+                    var excluded := ["glass", "window", "tire", "tyre", "rubber", "wheel", "rim", "chrome", "metal", "light", "lamp"]
+                    var keep_original := false
+                    for word in excluded:
+                        if material_name.contains(word):
+                            keep_original = true
+                            break
+                    if not keep_original and source.albedo_color.get_luminance() > 0.20:
+                        var painted := source.duplicate() as StandardMaterial3D
+                        if painted != null:
+                            painted.albedo_color = color
+                            painted.metallic = maxf(painted.metallic, 0.22)
+                            painted.roughness = minf(painted.roughness, 0.34)
+                            mesh_instance.set_surface_override_material(surface_index, painted)
+    for child in node.get_children():
+        _tint_vehicle_paint(child, color)
 
 func _add_tuning_parts(root: Node3D, color: Color) -> void:
     # Modular visual body-kit choices. Parts are procedural and remain free of external paid assets.
