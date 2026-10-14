@@ -94,6 +94,14 @@ jobs:
           godot --headless --verbose --editor --path godot --quit
           godot --headless --verbose --path godot --export-debug "Android" build/OLD-RACING-3D.apk
           test -s godot/build/OLD-RACING-3D.apk
+      - name: Sign and verify APK for Android installation
+        run: |
+          SDK_PATH="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/lib/android-sdk}}"
+          APKSIGNER="$SDK_PATH/build-tools/34.0.0/apksigner"
+          test -x "$APKSIGNER"
+          "$APKSIGNER" sign --ks "$HOME/.android/debug.keystore" --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out godot/build/OLD-RACING-3D-signed.apk godot/build/OLD-RACING-3D.apk
+          "$APKSIGNER" verify --verbose godot/build/OLD-RACING-3D-signed.apk
+          mv godot/build/OLD-RACING-3D-signed.apk godot/build/OLD-RACING-3D.apk
       - name: Upload 3D APK
         uses: actions/upload-artifact@v4
         with:
