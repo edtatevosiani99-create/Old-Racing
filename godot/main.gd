@@ -34,6 +34,9 @@ var camera: Camera3D
 var spawn_timer := 0.0
 var coin_timer := 0.0
 var touch_steer := 0.0
+var menu_active := true
+var menu_panel: Control
+var control_mode_button: Button
 
 func _ready() -> void:
     _make_world()
@@ -43,6 +46,7 @@ func _ready() -> void:
     add_child(player)
     _make_camera()
     _make_ui()
+    _make_menu()
     for i in range(5):
         _spawn_traffic(-25.0 - float(i) * 24.0)
     set_process(true)
@@ -223,6 +227,72 @@ func _make_ui() -> void:
     gas_button.button_down.connect(func(): gas_pressed = true)
     gas_button.button_up.connect(func(): gas_pressed = false)
 
+
+func _make_menu() -> void:
+    menu_panel = Control.new()
+    menu_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    menu_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+    menu_panel.z_index = 20
+    add_child(menu_panel)
+
+    var shade := ColorRect.new()
+    shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    shade.color = Color(0.015, 0.025, 0.045, 0.90)
+    menu_panel.add_child(shade)
+
+    var title := Label.new()
+    title.text = "OLD RACING 3D"
+    title.anchor_left = 0.20
+    title.anchor_right = 0.80
+    title.anchor_top = 0.13
+    title.anchor_bottom = 0.25
+    title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    title.add_theme_font_size_override("font_size", 44)
+    title.add_theme_color_override("font_color", Color(0.96, 0.98, 1.0))
+    menu_panel.add_child(title)
+
+    var subtitle := Label.new()
+    subtitle.text = "CHOOSE YOUR CONTROL"
+    subtitle.anchor_left = 0.25
+    subtitle.anchor_right = 0.75
+    subtitle.anchor_top = 0.31
+    subtitle.anchor_bottom = 0.39
+    subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    subtitle.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    subtitle.add_theme_font_size_override("font_size", 23)
+    subtitle.add_theme_color_override("font_color", Color(0.72, 0.84, 0.98))
+    menu_panel.add_child(subtitle)
+
+    control_mode_button = Button.new()
+    control_mode_button.text = "STEERING: BUTTONS"
+    control_mode_button.anchor_left = 0.30
+    control_mode_button.anchor_right = 0.70
+    control_mode_button.anchor_top = 0.43
+    control_mode_button.anchor_bottom = 0.56
+    control_mode_button.add_theme_font_size_override("font_size", 22)
+    control_mode_button.pressed.connect(_toggle_control_mode)
+    menu_panel.add_child(control_mode_button)
+
+    var start_button := Button.new()
+    start_button.text = "PLAY"
+    start_button.anchor_left = 0.36
+    start_button.anchor_right = 0.64
+    start_button.anchor_top = 0.64
+    start_button.anchor_bottom = 0.79
+    start_button.add_theme_font_size_override("font_size", 30)
+    start_button.pressed.connect(_start_game)
+    menu_panel.add_child(start_button)
+
+func _toggle_control_mode() -> void:
+    tilt_mode = not tilt_mode
+    control_mode_button.text = "STEERING: TILT" if tilt_mode else "STEERING: BUTTONS"
+    touch_steer = 0.0
+
+func _start_game() -> void:
+    menu_active = false
+    menu_panel.hide()
+
 func _button(layer: CanvasLayer, text_value: String, top_left: Vector2, bottom_right: Vector2) -> Button:
     var b := Button.new()
     b.text = text_value
@@ -239,7 +309,7 @@ func _button(layer: CanvasLayer, text_value: String, top_left: Vector2, bottom_r
     return b
 
 func _process(delta: float) -> void:
-    if paused or crashed:
+    if menu_active or paused or crashed:
         return
     var steer := touch_steer
     if tilt_mode and OS.has_feature("mobile"):
