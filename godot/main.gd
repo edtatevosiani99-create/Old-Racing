@@ -206,7 +206,10 @@ func _make_road() -> void:
 
 func _make_roadside_tree(base: Vector3, variant: int) -> void:
     # Import proper low-poly tree meshes from the CC0 environment kit when available.
-    var tree_path := "res://assets/environment/city/tree-large.glb" if variant % 3 != 0 else "res://assets/environment/city/tree-small.glb"
+    # Prefer the separate CC0 Nature Kit trees for more natural silhouettes; retain city-kit fallback.
+    var tree_path := "res://assets/environment/nature/tree_oak.glb" if variant % 3 != 0 else "res://assets/environment/nature/tree_default.glb"
+    if not ResourceLoader.exists(tree_path):
+        tree_path = "res://assets/environment/city/tree-large.glb" if variant % 3 != 0 else "res://assets/environment/city/tree-small.glb"
     if ResourceLoader.exists(tree_path):
         var tree_scene := load(tree_path) as PackedScene
         if tree_scene != null:
