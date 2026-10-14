@@ -266,7 +266,7 @@ func _make_car(color: Color, is_player: bool) -> Node3D:
     var vehicle_paths: Array[String] = [
         "res://assets/cars/ferrari_f40.glb",
         "res://assets/cars/camaro_zl1_2017.glb",
-        "res://assets/cars/dodge_charger.glb"
+        "res://assets/cars/dodge_charger.gltf"
     ]
     var kenney_fallback_paths: Array[String] = [
         "res://assets/vehicles/race.glb",
