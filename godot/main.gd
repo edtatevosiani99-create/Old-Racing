@@ -42,6 +42,8 @@ var selected_car_color := Color(0.08, 0.32, 0.95)
 var car_color_index := 0
 var car_colors: Array[Color] = [Color(0.08, 0.32, 0.95), Color(0.82, 0.08, 0.06), Color(0.86, 0.88, 0.90)]
 var car_names: Array[String] = ["SPORT BLUE", "MUSTANG RED", "BMW WHITE"]
+var pause_panel: Control
+var crash_panel: Control
 
 func _ready() -> void:
     _make_world()
@@ -235,6 +237,7 @@ func _make_ui() -> void:
     layer.add_child(message_label)
     pause_button = _button(layer, "Ⅱ", Vector2(0.91, 0.02), Vector2(0.98, 0.12))
     pause_button.pressed.connect(_toggle_pause)
+    _make_game_overlays(layer)
     left_button = _button(layer, "◀", Vector2(0.02, 0.72), Vector2(0.14, 0.94))
     left_button.button_down.connect(func(): touch_steer = -1.0)
     left_button.button_up.connect(func(): touch_steer = 0.0)
@@ -334,6 +337,95 @@ func _start_game() -> void:
     menu_active = false
     menu_panel.hide()
 
+
+func _make_game_overlays(layer: CanvasLayer) -> void:
+    pause_panel = Control.new()
+    pause_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    pause_panel.visible = false
+    pause_panel.z_index = 10
+    layer.add_child(pause_panel)
+    var pause_shade := ColorRect.new()
+    pause_shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    pause_shade.color = Color(0.01, 0.02, 0.04, 0.82)
+    pause_panel.add_child(pause_shade)
+    var pause_title := Label.new()
+    pause_title.text = "PAUSED"
+    pause_title.anchor_left = 0.30
+    pause_title.anchor_right = 0.70
+    pause_title.anchor_top = 0.22
+    pause_title.anchor_bottom = 0.36
+    pause_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    pause_title.add_theme_font_size_override("font_size", 42)
+    pause_panel.add_child(pause_title)
+    var resume_button := _overlay_button(pause_panel, "RESUME", 0.34, 0.43, 0.66, 0.56)
+    resume_button.pressed.connect(_toggle_pause)
+    var menu_button := _overlay_button(pause_panel, "MAIN MENU", 0.34, 0.61, 0.66, 0.74)
+    menu_button.pressed.connect(_return_to_menu)
+
+    crash_panel = Control.new()
+    crash_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    crash_panel.visible = false
+    crash_panel.z_index = 11
+    layer.add_child(crash_panel)
+    var crash_shade := ColorRect.new()
+    crash_shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    crash_shade.color = Color(0.10, 0.015, 0.015, 0.84)
+    crash_panel.add_child(crash_shade)
+    var crash_title := Label.new()
+    crash_title.text = "CRASH!"
+    crash_title.anchor_left = 0.30
+    crash_title.anchor_right = 0.70
+    crash_title.anchor_top = 0.22
+    crash_title.anchor_bottom = 0.36
+    crash_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    crash_title.add_theme_font_size_override("font_size", 42)
+    crash_title.add_theme_color_override("font_color", Color(1.0, 0.30, 0.22))
+    crash_panel.add_child(crash_title)
+    var retry_button := _overlay_button(crash_panel, "TRY AGAIN", 0.34, 0.43, 0.66, 0.56)
+    retry_button.pressed.connect(_restart_game)
+    var crash_menu_button := _overlay_button(crash_panel, "MAIN MENU", 0.34, 0.61, 0.66, 0.74)
+    crash_menu_button.pressed.connect(_return_to_menu)
+
+func _overlay_button(parent: Control, label_text: String, left: float, top: float, right: float, bottom: float) -> Button:
+    var b := Button.new()
+    b.text = label_text
+    b.anchor_left = left
+    b.anchor_top = top
+    b.anchor_right = right
+    b.anchor_bottom = bottom
+    b.add_theme_font_size_override("font_size", 24)
+    parent.add_child(b)
+    return b
+
+func _restart_game() -> void:
+    crashed = false
+    paused = false
+    distance = 0.0
+    speed = 26.0
+    steering = 0.0
+    touch_steer = 0.0
+    player.position = Vector3(0, 0, PLAYER_Z)
+    message_label.text = ""
+    crash_panel.hide()
+    for car in traffic:
+        car.queue_free()
+    traffic.clear()
+    for coin in coin_nodes:
+        coin.queue_free()
+    coin_nodes.clear()
+    for i in range(5):
+        _spawn_traffic(-25.0 - float(i) * 24.0)
+
+func _return_to_menu() -> void:
+    paused = false
+    crashed = false
+    menu_active = true
+    pause_panel.hide()
+    crash_panel.hide()
+    menu_panel.show()
+    message_label.text = ""
+    touch_steer = 0.0
+
 func _button(layer: CanvasLayer, text_value: String, top_left: Vector2, bottom_right: Vector2) -> Button:
     var b := Button.new()
     b.text = text_value
@@ -384,7 +476,7 @@ func _process(delta: float) -> void:
             _spawn_traffic(-150.0 - randf() * 55.0)
         elif abs(car.position.z - PLAYER_Z) < 2.2 and abs(car.position.x - player.position.x) < 1.35:
             crashed = true
-            message_label.text = "CRASH!  Tap to restart"
+            crash_panel.show()
     if spawn_timer > 1.7:
         spawn_timer = 0.0
         _spawn_traffic(-165.0 - randf() * 45.0)
@@ -426,22 +518,15 @@ func _spawn_coin() -> void:
     coin_nodes.append(coin)
 
 func _toggle_pause() -> void:
+    if menu_active or crashed:
+        return
     paused = not paused
-    message_label.text = "PAUSED" if paused else ""
+    pause_panel.visible = paused
+    if not paused:
+        touch_steer = 0.0
 
 func _unhandled_input(event: InputEvent) -> void:
-    if event is InputEventScreenTouch and event.pressed and crashed:
-        crashed = false
-        distance = 0.0
-        speed = 26.0
-        player.position = Vector3(0, 0, PLAYER_Z)
-        message_label.text = ""
-        for car in traffic:
-            car.queue_free()
-        traffic.clear()
-        for i in range(5):
-            _spawn_traffic(-25.0 - float(i) * 24.0)
-    elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+    if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
         _toggle_pause()
 
 func _box(size: Vector3, color: Color) -> MeshInstance3D:
