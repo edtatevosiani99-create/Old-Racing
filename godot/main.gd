@@ -1018,7 +1018,7 @@ func _selector_change_car(direction: int) -> void:
 
 func _car_stats_text(index: int) -> String:
     var i := posmod(index, CAR_TOP_SPEEDS.size())
-    var handling_label := ["SHARP", "BALANCED", "HEAVY"][i]
+    var handling_label: String = ["SHARP", "BALANCED", "HEAVY"][i]
     return "TOP %d km/h   ACCEL %d/10   BRAKE %d/10   STEERING %s" % [int(CAR_TOP_SPEEDS[i] * 4.0), [10, 8, 7][i], [10, 9, 8][i], handling_label]
 
 func _apply_car_performance() -> void:
