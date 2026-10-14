@@ -33,3 +33,14 @@ This file records the selected sources for the next visual-quality pass. The gam
 ## Current limitation
 
 These are verified candidate pages, not claims that all listed models are already in the APK. Sketchfab candidate files require a direct download and a license/geometry check before they can be bundled. The environment packs are the safest first integration because their CC0 terms and engine-compatible formats are clearly stated by the publishers.
+
+
+## User-selected cars — Old-Racing traffic pass (2026-10-14)
+
+The user approved these three Poly Pizza candidates to add to the game:
+- Ferrari F40 — https://poly.pizza/m/RTwim9bhNd — FBX/GLTF, Creative Commons Attribution; credit PuKkBuMXDD.
+- Chevrolet Camaro / Camaro ZL1 2017 — https://poly.pizza/m/kVcKsd2dEk and https://poly.pizza/m/7bF7UVAoYRG — FBX/GLTF or OBJ/GLTF, Creative Commons Attribution; credit PuKkBuMXDD and Kris Tong.
+- Dodge Charger — https://poly.pizza/m/4b80hRVxqvv — OBJ/GLTF, Creative Commons Attribution; credit David Sirera.
+
+### Integration status and requirements
+These are selected source pages, not yet bundled game assets. All three pages label the models Low Poly and Creative Commons Attribution, so the repository/game must include appropriate creator credits. Before treating them as integrated, download the actual model files, inspect mesh scale/materials and wheel geometry, convert to GLB if needed, place them under `godot/assets/cars/`, add attribution to `godot/assets/THIRD_PARTY_LICENSES.txt`, instance the models in the traffic spawning code with a safe fallback, then run Godot import/export and test the APK on Android. Do not claim the cars are present in the APK until those steps and a successful build are verified.
