@@ -110,30 +110,55 @@ func _make_road() -> void:
 
 func _make_car(color: Color, is_player: bool) -> Node3D:
     var root := Node3D.new()
-    var body := _box(Vector3(1.55, 0.48, 3.0), color)
-    body.position.y = 0.62
+    var body := _box(Vector3(1.72, 0.42, 3.25), color)
+    body.position.y = 0.59
     root.add_child(body)
+    var lower_skirt := _box(Vector3(1.78, 0.16, 2.55), color.darkened(0.22))
+    lower_skirt.position = Vector3(0, 0.38, 0.02)
+    root.add_child(lower_skirt)
+    var grille := _box(Vector3(0.62, 0.15, 0.035), Color(0.018, 0.022, 0.025))
+    grille.position = Vector3(0, 0.49, -1.66)
+    root.add_child(grille)
+    for x in [-0.64, 0.64]:
+        var intake := _box(Vector3(0.30, 0.19, 0.04), Color(0.025, 0.03, 0.035))
+        intake.position = Vector3(x, 0.46, -1.65)
+        root.add_child(intake)
     var hood := _box(Vector3(1.42, 0.22, 0.95), color.lightened(0.12))
     hood.position = Vector3(0, 0.84, -0.82)
     root.add_child(hood)
-    var roof := _box(Vector3(1.08, 0.48, 1.28), Color(0.10, 0.17, 0.22))
-    roof.position = Vector3(0, 1.05, 0.18)
+    var roof := _box(Vector3(1.10, 0.43, 1.30), Color(0.055, 0.085, 0.10))
+    roof.position = Vector3(0, 1.04, 0.18)
     root.add_child(roof)
+    var rear_glass := _box(Vector3(0.92, 0.25, 0.06), Color(0.20, 0.36, 0.42))
+    rear_glass.position = Vector3(0, 1.08, 0.86)
+    rear_glass.rotation.x = deg_to_rad(18)
+    root.add_child(rear_glass)
+    for x in [-0.98, 0.98]:
+        var mirror := _box(Vector3(0.25, 0.13, 0.18), color)
+        mirror.position = Vector3(x * 1.08, 0.91, -0.45)
+        root.add_child(mirror)
+    var spoiler := _box(Vector3(1.55, 0.08, 0.26), color.darkened(0.05))
+    spoiler.position = Vector3(0, 1.03, 1.42)
+    root.add_child(spoiler)
     var windshield := _box(Vector3(0.95, 0.30, 0.07), Color(0.30, 0.55, 0.67))
     windshield.position = Vector3(0, 1.12, -0.48)
     windshield.rotation.x = deg_to_rad(-20)
     root.add_child(windshield)
-    for x in [-0.79, 0.79]:
-        for z in [-0.95, 0.95]:
-            var wheel := _cylinder(0.25, 0.18, Color(0.035, 0.04, 0.045))
+    for x in [-0.86, 0.86]:
+        for z in [-1.02, 1.02]:
+            var wheel := _cylinder(0.31, 0.20, Color(0.025, 0.028, 0.032))
             wheel.rotation.z = PI / 2.0
-            wheel.position = Vector3(x, 0.35, z)
+            wheel.position = Vector3(x, 0.34, z)
             root.add_child(wheel)
-    var front_light := _box(Vector3(0.32, 0.10, 0.05), Color(1.0, 0.91, 0.65))
-    front_light.position = Vector3(-0.43, 0.70, -1.51)
+            var rim := _cylinder(0.19, 0.215, Color(0.60, 0.63, 0.66))
+            rim.rotation.z = PI / 2.0
+            rim.position = Vector3(x * 1.01, 0.34, z)
+            root.add_child(rim)
+    var front_light := _box(Vector3(0.42, 0.12, 0.07), Color(0.94, 0.98, 1.0))
+    front_light.position = Vector3(-0.52, 0.70, -1.61)
     root.add_child(front_light)
     var front_light2 := front_light.duplicate() as MeshInstance3D
-    front_light2.position.x = 0.43
+    front_light2.position.x = 0.52
     root.add_child(front_light2)
     var tail := _box(Vector3(0.32, 0.11, 0.05), Color(0.95, 0.04, 0.035))
     tail.position = Vector3(-0.43, 0.68, 1.51)
@@ -270,8 +295,8 @@ func _process(delta: float) -> void:
 func _spawn_traffic(z: float) -> void:
     var colors := [Color(0.85, 0.08, 0.08), Color(0.10, 0.55, 0.30), Color(0.92, 0.72, 0.12), Color(0.78, 0.80, 0.84), Color(0.08, 0.10, 0.14)]
     var car := _make_car(colors[randi() % colors.size()], false)
-    var lane := [-5.25, -1.75, 1.75, 5.25][randi() % 4]
-    car.position = Vector3(lane, 0, z)
+    var lane_x: float = [-5.25, -1.75, 1.75, 5.25][randi() % 4]
+    car.position = Vector3(lane_x, 0, z)
     add_child(car)
     traffic.append(car)
 
