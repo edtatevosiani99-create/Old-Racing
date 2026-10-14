@@ -251,37 +251,55 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
         label(c,"Distance: ${distance.toInt()} m",w/2,h*.53f,h*.045f,Color.WHITE,true)
         button(c,w*.39f,h*.60f,w*.61f,h*.71f,"RESTART")
     }
-    override fun onTouchEvent(e:MotionEvent):Boolean {
-        val w=width.toFloat(); val h=height.toFloat()
-        if(e.action==MotionEvent.ACTION_DOWN) {
-            if(menu) {
-                if(e.y>h*.39f && e.y<h*.68f) selectedCar=when { e.x<w*.38f->0; e.x<w*.62f->1; else->2 }
-                else if(e.y>h*.81f) {
-                    val cost = 20 + engineLevel * 10
-                    if (engineLevel < 5 && wallet >= cost) {
-                        wallet -= cost
-                        engineLevel += 1
-                        prefs.edit().putInt("wallet_coins", wallet).putInt("engine_level", engineLevel).apply()
+    override fun onTouchEvent(e: MotionEvent): Boolean {
+        val w = width.toFloat()
+        val h = height.toFloat()
+        when (e.actionMasked) {
+            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
+                if (menu) {
+                    if (e.actionMasked == MotionEvent.ACTION_DOWN) {
+                        if (e.y > h * .39f && e.y < h * .68f) {
+                            selectedCar = when { e.x < w * .38f -> 0; e.x < w * .62f -> 1; else -> 2 }
+                        } else if (e.y > h * .81f) {
+                            val cost = 20 + engineLevel * 10
+                            if (engineLevel < 5 && wallet >= cost) {
+                                wallet -= cost; engineLevel += 1
+                                prefs.edit().putInt("wallet_coins", wallet).putInt("engine_level", engineLevel).apply()
+                            }
+                        } else if (e.y > h * .68f) {
+                            if (e.x > w * .50f) twoWay = !twoWay
+                            else {
+                                menu = false; crashed = false; paused = false; distance = 0f; speed = 105
+                                playerLane = if (twoWay) 1 else 0; steering = 0f
+                                traffic.clear(); roadCoins.clear(); coinClock = 0f
+                                repeat(4) { traffic.add(TrafficCar(rnd.nextInt(if (twoWay) 4 else 2), rnd.nextFloat() * .75f, trafficColors.random(rnd))) }
+                            }
+                        }
                     }
+                } else if (crashed) {
+                    if (e.actionMasked == MotionEvent.ACTION_DOWN) { menu = true; paused = false }
+                } else if (e.y < h * .20f && e.x > w * .72f) {
+                    if (e.actionMasked == MotionEvent.ACTION_DOWN) paused = !paused
+                } else if (paused) {
+                    if (e.actionMasked == MotionEvent.ACTION_DOWN) paused = false
+                } else if (e.y > h * .72f && e.x >= w * .29f && e.x < w * .49f) {
+                    brakeHeld = true; gasHeld = false; steerDirection = 0f
+                } else if (e.y > h * .72f && e.x >= w * .51f && e.x < w * .72f) {
+                    gasHeld = true; brakeHeld = false; steerDirection = 0f
+                } else if (e.y < h * .20f && e.x < w * .25f && e.actionMasked == MotionEvent.ACTION_DOWN) {
+                    tiltEnabled = !tiltEnabled
+                } else if (!tiltEnabled) {
+                    if (e.x < w * .28f) steerDirection = -1f
+                    else if (e.x > w * .72f) steerDirection = 1f
+                    else steerDirection = 0f
                 }
-                else if(e.y>h*.68f) {
-                    if(e.x>w*.50f) twoWay=!twoWay else {
-                        menu=false; crashed=false; paused=false; distance=0f; speed=105; playerLane=if(twoWay)1 else 0; traffic.clear(); roadCoins.clear(); coinClock=0f
-                        repeat(4){traffic.add(TrafficCar(rnd.nextInt(if(twoWay)4 else 2),rnd.nextFloat()*.75f,trafficColors.random(rnd)))}
-                    }
-                }
-            } else if(crashed) { menu=true; paused=false }
-            else if(e.y<h*.20f && e.x>w*.72f) paused=!paused
-            else if(paused) paused=false
-            else if(e.x<w*.25f && e.y<h*.22f) tiltEnabled=!tiltEnabled
-            else if(e.x<w*.25f) playerLane=max(0,playerLane-1)
-            else if(e.x>w*.75f) playerLane=min(if(twoWay)3 else 1,playerLane+1)
-            else if(e.y>h*.78f) speed=if(e.x<w*.5f)max(50,speed-10) else min(260 + engineLevel * 15,speed+10)
-            invalidate()
-        } else if (e.action == MotionEvent.ACTION_UP || e.action == MotionEvent.ACTION_CANCEL) {
-            gasHeld = false
-            brakeHeld = false
-            steerDirection = 0f
+                invalidate()
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                gasHeld = false
+                brakeHeld = false
+                steerDirection = 0f
+            }
         }
         return true
     }
