@@ -246,9 +246,21 @@ func _make_roadside_tree(base: Vector3, variant: int) -> void:
         add_child(grass)
 
 
+func _car_display_name(index: int) -> String:
+    var model_paths: Array[String] = [
+        "res://assets/cars/ferrari_f40.glb",
+        "res://assets/cars/camaro_zl1_2017.glb",
+        "res://assets/cars/dodge_charger.glb"
+    ]
+    if index >= 0 and index < model_paths.size() and ResourceLoader.exists(model_paths[index]):
+        return car_names[index]
+    var fallback_names: Array[String] = ["SPORTS CAR", "SPORT SEDAN", "LUXURY SUV"]
+    return fallback_names[index % fallback_names.size()]
+
+
 func _make_car(color: Color, is_player: bool) -> Node3D:
     var root := Node3D.new()
-    # Prefer real CC0 glTF vehicle models; keep procedural fallback for editor/offline runs.
+    # Prefer the selected Poly Pizza models; use the bundled Kenney cars until those files are added.
     # Imported Poly Pizza cars. Add the downloaded GLB files at these exact paths.
     # If an asset is absent, the safe procedural fallback below keeps the game playable.
     var vehicle_paths: Array[String] = [
@@ -500,7 +512,7 @@ func _make_menu() -> void:
     menu_panel.add_child(left_caption)
 
     var car_caption := Label.new()
-    car_caption.text = car_names[car_color_index]
+    car_caption.text = _car_display_name(car_color_index)
     car_caption.anchor_left = 0.055
     car_caption.anchor_right = 0.43
     car_caption.anchor_top = 0.29
@@ -631,7 +643,7 @@ func _refresh_control_layout() -> void:
 func _cycle_car_color() -> void:
     car_color_index = (car_color_index + 1) % car_colors.size()
     selected_car_color = car_colors[car_color_index]
-    car_color_button.text = "GARAGE: " + car_names[car_color_index]
+    car_color_button.text = "GARAGE: " + _car_display_name(car_color_index)
     if is_instance_valid(player):
         player.queue_free()
     player = _make_car(selected_car_color, true)
