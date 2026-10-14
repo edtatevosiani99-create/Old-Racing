@@ -432,6 +432,12 @@ func _make_ui() -> void:
     right_button = _button(layer, "▶", Vector2(0.15, 0.72), Vector2(0.27, 0.94))
     brake_button = _button(layer, "BRAKE", Vector2(0.72, 0.76), Vector2(0.84, 0.95))
     gas_button = _button(layer, "GAS", Vector2(0.86, 0.76), Vector2(0.98, 0.95))
+    # Pedals use the actual button hold state, not screen-coordinate guesses.
+    # This keeps gas/brake reliable while another finger steers.
+    gas_button.button_down.connect(func(): gas_pressed = true)
+    gas_button.button_up.connect(func(): gas_pressed = false)
+    brake_button.button_down.connect(func(): brake_pressed = true)
+    brake_button.button_up.connect(func(): brake_pressed = false)
     _refresh_control_layout()
 
 
@@ -864,21 +870,14 @@ func _refresh_touch_controls() -> void:
     var viewport_size := get_viewport().get_visible_rect().size
     if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
         return
-    gas_pressed = false
-    brake_pressed = false
+    # Steering is tracked per finger; pedal hold state comes from button_down/up.
     var left_down := false
     var right_down := false
     for finger in active_touches:
         var p: Vector2 = active_touches[finger]
         var nx := p.x / viewport_size.x
         var ny := p.y / viewport_size.y
-        if ny >= 0.68 and nx >= 0.84:
-            gas_pressed = true
-        elif ny >= 0.68 and tilt_mode and nx < 0.18:
-            brake_pressed = true
-        elif ny >= 0.68 and not tilt_mode and nx >= 0.70 and nx < 0.85:
-            brake_pressed = true
-        elif ny >= 0.68 and not tilt_mode and nx < 0.145:
+        if ny >= 0.68 and not tilt_mode and nx < 0.145:
             left_down = true
         elif ny >= 0.68 and not tilt_mode and nx >= 0.145 and nx < 0.29:
             right_down = true
