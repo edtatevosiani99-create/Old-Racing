@@ -34,6 +34,7 @@ var camera: Camera3D
 var spawn_timer := 0.0
 var coin_timer := 0.0
 var touch_steer := 0.0
+var active_touches: Dictionary = {}
 var menu_active := true
 var menu_panel: Control
 var control_mode_button: Button
@@ -71,12 +72,14 @@ func _make_world() -> void:
     e.sky.sky_material = sky_mat
     e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
     e.ambient_light_color = Color(0.7, 0.76, 0.85)
-    e.ambient_light_energy = 0.8
+    e.ambient_light_energy = 0.95
+    e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
     env.environment = e
     add_child(env)
     var sun := DirectionalLight3D.new()
     sun.rotation_degrees = Vector3(-48, -25, 0)
     sun.light_energy = 1.4
+    sun.shadow_enabled = true
     add_child(sun)
     var ground := _box(Vector3(250, 0.3, 260), Color(0.17, 0.42, 0.20))
     ground.position = Vector3(0, -0.35, -65)
@@ -99,6 +102,10 @@ func _make_road() -> void:
             mark.position = Vector3(lane * LANE_WIDTH, 0.015, 12.0 - float(i) * 7.5)
             add_child(mark)
             road_marks.append(mark)
+    for side in [-1.0, 1.0]:
+        var shoulder := _box(Vector3(0.8, 0.04, ROAD_LENGTH), Color(0.32, 0.34, 0.34))
+        shoulder.position = Vector3(side * (ROAD_WIDTH * 0.5 + 0.42), -0.02, -70)
+        add_child(shoulder)
     var center := _box(Vector3(0.13, 0.03, ROAD_LENGTH), Color(0.98, 0.75, 0.12))
     center.position = Vector3(0, 0.02, -70)
     add_child(center)
@@ -171,6 +178,23 @@ func _make_car(color: Color, is_player: bool) -> Node3D:
     windshield.position = Vector3(0, 1.12, -0.48)
     windshield.rotation.x = deg_to_rad(-20)
     root.add_child(windshield)
+    # Side glass, door seams and sporty body accents.
+    for side in [-1.0, 1.0]:
+        var side_glass := _box(Vector3(0.045, 0.27, 0.78), Color(0.12, 0.27, 0.34))
+        side_glass.position = Vector3(side * 0.565, 1.08, -0.02)
+        root.add_child(side_glass)
+        var door_line := _box(Vector3(0.035, 0.25, 0.78), color.darkened(0.30))
+        door_line.position = Vector3(side * 0.866, 0.61, 0.10)
+        root.add_child(door_line)
+    var hood_line := _box(Vector3(0.045, 0.018, 0.72), color.lightened(0.28))
+    hood_line.position = Vector3(0.0, 0.958, -0.78)
+    root.add_child(hood_line)
+    var front_bumper := _box(Vector3(1.58, 0.13, 0.12), color.darkened(0.32))
+    front_bumper.position = Vector3(0, 0.36, -1.62)
+    root.add_child(front_bumper)
+    var rear_bumper := _box(Vector3(1.58, 0.13, 0.12), color.darkened(0.32))
+    rear_bumper.position = Vector3(0, 0.36, 1.58)
+    root.add_child(rear_bumper)
     for x in [-0.86, 0.86]:
         for z in [-1.02, 1.02]:
             var wheel := _cylinder(0.31, 0.20, Color(0.025, 0.028, 0.032))
@@ -239,17 +263,9 @@ func _make_ui() -> void:
     pause_button.pressed.connect(_toggle_pause)
     _make_game_overlays(layer)
     left_button = _button(layer, "◀", Vector2(0.02, 0.72), Vector2(0.14, 0.94))
-    left_button.button_down.connect(func(): touch_steer = -1.0)
-    left_button.button_up.connect(func(): touch_steer = 0.0)
     right_button = _button(layer, "▶", Vector2(0.15, 0.72), Vector2(0.27, 0.94))
-    right_button.button_down.connect(func(): touch_steer = 1.0)
-    right_button.button_up.connect(func(): touch_steer = 0.0)
     brake_button = _button(layer, "BRAKE", Vector2(0.73, 0.76), Vector2(0.85, 0.95))
-    brake_button.button_down.connect(func(): brake_pressed = true)
-    brake_button.button_up.connect(func(): brake_pressed = false)
     gas_button = _button(layer, "GAS", Vector2(0.86, 0.76), Vector2(0.98, 0.95))
-    gas_button.button_down.connect(func(): gas_pressed = true)
-    gas_button.button_up.connect(func(): gas_pressed = false)
 
 
 func _make_menu() -> void:
@@ -446,7 +462,7 @@ func _process(delta: float) -> void:
         return
     var steer := touch_steer
     if tilt_mode and OS.has_feature("mobile"):
-        steer = clamp(-Input.get_accelerometer().x / 5.0, -1.0, 1.0)
+        steer = clamp(Input.get_accelerometer().x / 5.0, -1.0, 1.0)
         if abs(touch_steer) > 0.1:
             steer = touch_steer
     if Input.is_action_pressed("ui_left"):
@@ -455,10 +471,12 @@ func _process(delta: float) -> void:
         steer = 1.0
     steering = move_toward(steering, steer, delta * 2.5)
     player.position.x = clamp(player.position.x + steering * delta * 6.0, -5.1, 5.1)
-    if gas_pressed:
+    if gas_pressed and not brake_pressed:
         speed = min(MAX_SPEED, speed + delta * 17.0)
-    elif brake_pressed:
+    elif brake_pressed and not gas_pressed:
         speed = max(MIN_SPEED, speed - delta * 28.0)
+    elif gas_pressed and brake_pressed:
+        speed = move_toward(speed, MIN_SPEED, delta * 35.0)
     else:
         speed = move_toward(speed, 26.0, delta * 2.0)
     distance += speed * delta * 0.5
@@ -523,6 +541,49 @@ func _toggle_pause() -> void:
     paused = not paused
     pause_panel.visible = paused
     if not paused:
+        touch_steer = 0.0
+
+func _input(event: InputEvent) -> void:
+    # Track each finger separately so steering and pedals work at the same time.
+    var changed := false
+    if event is InputEventScreenTouch:
+        if event.pressed:
+            active_touches[event.index] = event.position
+        else:
+            active_touches.erase(event.index)
+        changed = true
+    elif event is InputEventScreenDrag:
+        if active_touches.has(event.index):
+            active_touches[event.index] = event.position
+            changed = true
+    if changed:
+        _refresh_touch_controls()
+
+func _refresh_touch_controls() -> void:
+    var viewport_size := get_viewport().get_visible_rect().size
+    if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+        return
+    gas_pressed = false
+    brake_pressed = false
+    var left_down := false
+    var right_down := false
+    for finger in active_touches:
+        var p: Vector2 = active_touches[finger]
+        var nx := p.x / viewport_size.x
+        var ny := p.y / viewport_size.y
+        if ny >= 0.68 and nx >= 0.84:
+            gas_pressed = true
+        elif ny >= 0.68 and nx >= 0.70 and nx < 0.84:
+            brake_pressed = true
+        elif ny >= 0.68 and nx < 0.145:
+            left_down = true
+        elif ny >= 0.68 and nx >= 0.145 and nx < 0.29:
+            right_down = true
+    if left_down and not right_down:
+        touch_steer = -1.0
+    elif right_down and not left_down:
+        touch_steer = 1.0
+    else:
         touch_steer = 0.0
 
 func _unhandled_input(event: InputEvent) -> void:
