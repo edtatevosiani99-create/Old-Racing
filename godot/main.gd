@@ -381,6 +381,118 @@ func _make_car(color: Color, is_player: bool) -> Node3D:
     var tail2 := tail.duplicate() as MeshInstance3D
     tail2.position.x = 0.43
     root.add_child(tail2)
+    # High-detail procedural body kit: layered fascia, glass trim, vents, badges and wheel hardware.
+    # Vehicle faces forward along -Z.
+    var front_lip := _box(Vector3(1.82, 0.055, 0.28), Color(0.018, 0.021, 0.025))
+    front_lip.position = Vector3(0, 0.285, -1.58)
+    root.add_child(front_lip)
+    var rear_diffuser := _box(Vector3(1.28, 0.12, 0.20), Color(0.025, 0.028, 0.032))
+    rear_diffuser.position = Vector3(0, 0.285, 1.56)
+    root.add_child(rear_diffuser)
+
+    # Individual LED headlight strips, amber indicators, and rear light bars.
+    for side in [-1.0, 1.0]:
+        var led := _box(Vector3(0.30, 0.035, 0.025), Color(0.78, 0.92, 1.0))
+        led.position = Vector3(side * 0.55, 0.755, -1.655)
+        root.add_child(led)
+        var indicator := _box(Vector3(0.085, 0.035, 0.025), Color(1.0, 0.48, 0.06))
+        indicator.position = Vector3(side * 0.78, 0.70, -1.65)
+        root.add_child(indicator)
+        var tail_outer := _box(Vector3(0.47, 0.12, 0.055), Color(0.19, 0.012, 0.018))
+        tail_outer.position = Vector3(side * 0.48, 0.69, 1.535)
+        root.add_child(tail_outer)
+        var tail_led := _box(Vector3(0.39, 0.045, 0.025), Color(1.0, 0.025, 0.018))
+        tail_led.position = Vector3(side * 0.48, 0.70, 1.57)
+        root.add_child(tail_led)
+
+    # Metallic grille mesh effect with multiple narrow horizontal slats.
+    for row in range(4):
+        var slat := _box(Vector3(0.52, 0.012, 0.018), Color(0.30, 0.33, 0.36))
+        slat.position = Vector3(0, 0.455 + float(row) * 0.035, -1.685)
+        root.add_child(slat)
+
+    # Side skirts, door handles, mirrors with glass, vents and sculpted accent lines.
+    for side in [-1.0, 1.0]:
+        var skirt := _box(Vector3(0.10, 0.12, 1.42), color.darkened(0.25))
+        skirt.position = Vector3(side * 0.87, 0.36, 0.05)
+        root.add_child(skirt)
+        var handle := _box(Vector3(0.035, 0.045, 0.20), Color(0.72, 0.74, 0.76))
+        handle.position = Vector3(side * 0.884, 0.69, 0.02)
+        root.add_child(handle)
+        var side_vent := _box(Vector3(0.025, 0.16, 0.34), Color(0.018, 0.022, 0.025))
+        side_vent.position = Vector3(side * 0.884, 0.68, -0.78)
+        root.add_child(side_vent)
+        for vent_line in range(3):
+            var vent_slit := _box(Vector3(0.018, 0.012, 0.24), Color(0.38, 0.40, 0.42))
+            vent_slit.position = Vector3(side * 0.901, 0.65 + float(vent_line) * 0.045, -0.78)
+            root.add_child(vent_slit)
+        var mirror_glass := _box(Vector3(0.035, 0.075, 0.13), Color(0.22, 0.39, 0.48))
+        mirror_glass.position = Vector3(side * 1.09, 0.925, -0.45)
+        root.add_child(mirror_glass)
+        var lower_trim := _box(Vector3(0.025, 0.025, 1.08), color.lightened(0.22))
+        lower_trim.position = Vector3(side * 0.91, 0.43, 0.20)
+        root.add_child(lower_trim)
+
+    # Wheels receive visible brake discs, calipers, hubs and five metallic spokes per side.
+    for side in [-1.0, 1.0]:
+        for z in [-1.02, 1.02]:
+            var disc := _cylinder(0.145, 0.225, Color(0.31, 0.33, 0.35))
+            disc.rotation.z = PI / 2.0
+            disc.position = Vector3(side * 0.995, 0.34, z)
+            root.add_child(disc)
+            var hub := _cylinder(0.055, 0.245, Color(0.78, 0.80, 0.82))
+            hub.rotation.z = PI / 2.0
+            hub.position = Vector3(side * 1.105, 0.34, z)
+            root.add_child(hub)
+            var caliper := _box(Vector3(0.075, 0.18, 0.10), Color(0.78, 0.035, 0.025))
+            caliper.position = Vector3(side * 1.105, 0.39, z - 0.12)
+            root.add_child(caliper)
+            for spoke_index in range(5):
+                var spoke := _box(Vector3(0.045, 0.245, 0.052), Color(0.72, 0.75, 0.78))
+                spoke.position = Vector3(side * 1.125, 0.34, z)
+                spoke.rotation.x = float(spoke_index) * TAU / 5.0
+                root.add_child(spoke)
+
+    # Hood power creases and a pair of raised vents catch highlights as the camera moves.
+    for side in [-1.0, 1.0]:
+        var hood_crease := _box(Vector3(0.025, 0.018, 0.72), color.lightened(0.18))
+        hood_crease.position = Vector3(side * 0.43, 0.93, -0.80)
+        root.add_child(hood_crease)
+        var hood_vent := _box(Vector3(0.20, 0.025, 0.28), Color(0.025, 0.028, 0.032))
+        hood_vent.position = Vector3(side * 0.25, 0.94, -1.05)
+        root.add_child(hood_vent)
+        for vent in range(3):
+            var hood_slit := _box(Vector3(0.15, 0.012, 0.018), Color(0.42, 0.44, 0.46))
+            hood_slit.position = Vector3(side * 0.25, 0.958, -1.13 + float(vent) * 0.075)
+            root.add_child(hood_slit)
+
+    # Rear exhaust tips and license plate frame.
+    for side in [-1.0, 1.0]:
+        var exhaust := _cylinder(0.075, 0.13, Color(0.48, 0.50, 0.52))
+        exhaust.rotation.x = PI / 2.0
+        exhaust.position = Vector3(side * 0.48, 0.34, 1.66)
+        root.add_child(exhaust)
+        var exhaust_inner := _cylinder(0.043, 0.14, Color(0.035, 0.038, 0.04))
+        exhaust_inner.rotation.x = PI / 2.0
+        exhaust_inner.position = Vector3(side * 0.48, 0.34, 1.70)
+        root.add_child(exhaust_inner)
+    var plate := _box(Vector3(0.48, 0.12, 0.025), Color(0.82, 0.84, 0.82))
+    plate.position = Vector3(0, 0.49, 1.635)
+    root.add_child(plate)
+    var plate_text := _box(Vector3(0.34, 0.018, 0.012), Color(0.035, 0.04, 0.045))
+    plate_text.position = Vector3(0, 0.50, 1.652)
+    root.add_child(plate_text)
+
+    # Subtle front fender markers and window pillars make the silhouette read more clearly.
+    for side in [-1.0, 1.0]:
+        var marker := _box(Vector3(0.025, 0.045, 0.12), Color(1.0, 0.42, 0.035))
+        marker.position = Vector3(side * 0.89, 0.62, -1.02)
+        root.add_child(marker)
+        var pillar := _box(Vector3(0.045, 0.30, 0.055), Color(0.025, 0.035, 0.042))
+        pillar.position = Vector3(side * 0.54, 1.08, 0.05)
+        pillar.rotation.x = deg_to_rad(-8.0)
+        root.add_child(pillar)
+
     if is_player:
         root.name = "PlayerCar"
     return root
