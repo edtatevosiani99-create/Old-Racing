@@ -117,6 +117,22 @@ func _make_road() -> void:
             foliage.position = Vector3(side * 10.0, 3.6, z)
             add_child(foliage)
 
+    # Add distant low-poly buildings and lit windows for a fuller roadside scene.
+    var building_colors: Array[Color] = [Color(0.68, 0.70, 0.73), Color(0.78, 0.65, 0.48), Color(0.46, 0.55, 0.62)]
+    for i in range(10):
+        var building_z := 2.0 - float(i) * 22.0
+        for side in [-1.0, 1.0]:
+            var h := 4.5 + float(i % 3) * 1.8
+            var building := _box(Vector3(3.8, h, 4.8), building_colors[i % building_colors.size()])
+            building.position = Vector3(side * (17.0 + float(i % 2) * 2.0), h * 0.5 - 0.1, building_z)
+            add_child(building)
+            for floor_index in range(2):
+                for window_side in [-1.0, 1.0]:
+                    var window := _box(Vector3(0.62, 0.72, 0.06), Color(0.22, 0.48, 0.66))
+                    window.position = Vector3(building.position.x + window_side * 0.9, 1.0 + float(floor_index) * 1.35, building_z - 2.44)
+                    add_child(window)
+
+
 func _make_car(color: Color, is_player: bool) -> Node3D:
     var root := Node3D.new()
     var body := _box(Vector3(1.72, 0.42, 3.25), color)
