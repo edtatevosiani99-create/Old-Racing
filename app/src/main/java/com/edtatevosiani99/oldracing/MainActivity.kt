@@ -44,6 +44,10 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
     private val carNames = arrayOf("MUSTANG GT", "BMW M4", "OPEL ASTRA GTC")
     private val trafficColors = intArrayOf(Color.LTGRAY, Color.rgb(30,30,35), Color.rgb(225,180,35), Color.rgb(30,135,90), Color.WHITE)
     private var playerLane = 1
+    private var steering = 0f
+    private var steerDirection = 0f
+    private var gasHeld = false
+    private var brakeHeld = false
     private var speed = 105
     private var distance = 0f
     private val prefs = context.getSharedPreferences("old_racing", Context.MODE_PRIVATE)
@@ -75,11 +79,11 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
         val now = System.currentTimeMillis()
         if (now < tiltCooldown) return
         val x = event.values[0]
-        if (abs(x) > 2.6f) {
-            playerLane = (playerLane + if (x > 0) -1 else 1).coerceIn(0, if (twoWay) 3 else 1)
-            tiltCooldown = now + 350L
-            invalidate()
-        }
+        // Continuous steering input: tilting changes steering smoothly rather than
+        // snapping the car between lanes. Device orientation may invert this sign;
+        // it is easy to tune on a real phone during play testing.
+        steerDirection = (-x / 5.0f).coerceIn(-1f, 1f)
+        invalidate()
     }
 
     private fun paint(c: Int) { p.color = c; p.style = Paint.Style.FILL; p.strokeWidth = 1f }
@@ -111,6 +115,11 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
         }
         if (!menu && !crashed && !paused) {
             distance += speed*dt*.015f; spawnClock += dt
+            if (gasHeld) speed = min(260 + engineLevel * 15, speed + (65f * dt).toInt().coerceAtLeast(1))
+            if (brakeHeld) speed = max(45, speed - (125f * dt).toInt().coerceAtLeast(1))
+            if (!tiltEnabled) steering += steerDirection * dt * 2.6f
+            else steering += steerDirection * dt * 2.6f
+            steering = steering.coerceIn(-1f, 1f)
             if (spawnClock>.8f) { spawnClock=0f; traffic.add(TrafficCar(rnd.nextInt(if(twoWay)4 else 2),0f,trafficColors.random(rnd))) }
             coinClock += dt
             if (coinClock > 1.05f) { coinClock = 0f; roadCoins.add(RoadCoin(rnd.nextInt(if(twoWay) 4 else 2), 0f)) }
@@ -145,15 +154,17 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
         }
         if (!menu) {
             playerLane=playerLane.coerceIn(0,if(twoWay)3 else 1)
-            drawCar(c,laneX(w,if(twoWay) playerLane else playerLane+1,.91f),h*.86f,w*.07f,carColors[selectedCar],true)
+            val basePlayerX = laneX(w,if(twoWay) playerLane else playerLane+1,.91f)
+            val playerX = (basePlayerX + steering * w * .085f).coerceIn(w*.13f, w*.87f)
+            drawCar(c,playerX,h*.86f,w*.07f,carColors[selectedCar],true)
             paint(Color.argb(150,0,0,0)); c.drawRoundRect(w*.02f,h*.03f,w*.32f,h*.18f,14f,14f,p)
             label(c,"$speed KM/H",w*.04f,h*.085f,h*.045f)
             label(c,"DISTANCE ${distance.toInt()} m  •  BEST $bestDistance m",w*.04f,h*.145f,h*.032f)
             label(c,"● $wallet",w*.36f,h*.09f,h*.045f,Color.rgb(255,205,45))
             button(c,w*.04f,h*.73f,w*.17f,h*.94f,"◀")
             button(c,w*.83f,h*.73f,w*.96f,h*.94f,"▶")
-            button(c,w*.38f,h*.82f,w*.48f,h*.96f,"−")
-            button(c,w*.52f,h*.82f,w*.62f,h*.96f,"+")
+            button(c,w*.32f,h*.78f,w*.45f,h*.96f,"BRAKE")
+            button(c,w*.55f,h*.78f,w*.68f,h*.96f,"GAS")
             label(c,(if(twoWay)"TWO WAY" else "ONE WAY") + if(tiltEnabled) " • TILT ON" else "",w*.96f,h*.08f,h*.035f,Color.WHITE,true)
         }
         if(menu) drawMenu(c,w,h) else if(crashed) drawCrash(c,w,h) else if(paused) drawPause(c,w,h)
@@ -267,6 +278,10 @@ private class RacingView(context: Context) : View(context), SensorEventListener 
             else if(e.x>w*.75f) playerLane=min(if(twoWay)3 else 1,playerLane+1)
             else if(e.y>h*.78f) speed=if(e.x<w*.5f)max(50,speed-10) else min(260 + engineLevel * 15,speed+10)
             invalidate()
+        } else if (e.action == MotionEvent.ACTION_UP || e.action == MotionEvent.ACTION_CANCEL) {
+            gasHeld = false
+            brakeHeld = false
+            steerDirection = 0f
         }
         return true
     }
