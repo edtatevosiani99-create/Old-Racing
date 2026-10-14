@@ -256,7 +256,15 @@ func _make_car(color: Color, is_player: bool) -> Node3D:
         "res://assets/cars/camaro_zl1_2017.glb",
         "res://assets/cars/dodge_charger.glb"
     ]
-    var vehicle_path := vehicle_paths[car_color_index % vehicle_paths.size()] if is_player else vehicle_paths[randi_range(0, vehicle_paths.size() - 1)]
+    var kenney_fallback_paths: Array[String] = [
+        "res://assets/vehicles/race.glb",
+        "res://assets/vehicles/sedan-sports.glb",
+        "res://assets/vehicles/suv-luxury.glb"
+    ]
+    var selected_index := car_color_index % vehicle_paths.size() if is_player else randi_range(0, vehicle_paths.size() - 1)
+    var vehicle_path := vehicle_paths[selected_index]
+    if not ResourceLoader.exists(vehicle_path):
+        vehicle_path = kenney_fallback_paths[selected_index]
     if ResourceLoader.exists(vehicle_path):
         var vehicle_scene := load(vehicle_path) as PackedScene
         if vehicle_scene != null:
