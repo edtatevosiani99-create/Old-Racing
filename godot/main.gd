@@ -43,7 +43,7 @@ var car_color_button: Button
 var selected_car_color := Color(0.08, 0.32, 0.95)
 var car_color_index := 0
 var car_colors: Array[Color] = [Color(0.08, 0.32, 0.95), Color(0.82, 0.08, 0.06), Color(0.86, 0.88, 0.90)]
-var car_names: Array[String] = ["SPORT BLUE", "MUSTANG RED", "BMW WHITE"]
+var car_names: Array[String] = ["SPORT COUPE", "SPORT SEDAN", "LUXURY SUV"]
 var pause_panel: Control
 var crash_panel: Control
 
