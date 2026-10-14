@@ -33,7 +33,8 @@ jobs:
           echo "JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
           mkdir -p "$HOME/.android"
           test -n "$ANDROID_HOME" || test -n "$ANDROID_SDK_ROOT"
-          keytool -genkeypair -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" || true
+          keytool -genkeypair -v -keystore "$HOME/.android/debug.keystore" -storetype JKS -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" || true
+          keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey
       - name: Install required Android SDK packages
         run: |
           SDK_PATH="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/lib/android-sdk}}"
@@ -82,6 +83,9 @@ jobs:
       - name: Export Android APK
         run: |
           mkdir -p godot/build
+          export GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$HOME/.android/debug.keystore"
+          export GODOT_ANDROID_KEYSTORE_DEBUG_USER="androiddebugkey"
+          export GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD="android"
           godot --headless --verbose --path godot --export-debug "Android" godot/build/OLD-RACING-3D.apk
           test -s godot/build/OLD-RACING-3D.apk
       - name: Upload 3D APK
