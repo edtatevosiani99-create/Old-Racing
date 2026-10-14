@@ -20,6 +20,7 @@ var tilt_mode := false
 var traffic: Array[Node3D] = []
 var coin_nodes: Array[Node3D] = []
 var road_marks: Array[MeshInstance3D] = []
+var ui_layer: CanvasLayer
 var hud: Label
 var speed_label: Label
 var coin_label: Label
@@ -329,6 +330,7 @@ func _make_camera() -> void:
 
 func _make_ui() -> void:
     var layer := CanvasLayer.new()
+    ui_layer = layer
     add_child(layer)
     hud = Label.new()
     hud.position = Vector2(22, 18)
@@ -373,7 +375,7 @@ func _make_menu() -> void:
     menu_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     menu_panel.mouse_filter = Control.MOUSE_FILTER_STOP
     menu_panel.z_index = 20
-    add_child(menu_panel)
+    ui_layer.add_child(menu_panel)
 
     # Original racing-game menu with the familiar garage / play / settings flow.
     # It uses our own layout and generated 3D scene rather than copied proprietary assets.
