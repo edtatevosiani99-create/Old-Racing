@@ -25,10 +25,20 @@ jobs:
           cp -R "/tmp/kenney-car-kit/Models/GLB format/." godot/assets/vehicles/
           cp -R "/tmp/kenney-car-kit/Models/City" godot/assets/environment/city
           cp /tmp/kenney-car-kit/License.txt godot/assets/THIRD_PARTY_LICENSES.txt
+          # Add Kenney Nature Kit (official CC0 archive) for more varied roadside trees.
+          wget -q https://kenney.nl/media/pages/assets/nature-kit/37ac38a37b-1677698939/kenney_nature-kit.zip -O /tmp/kenney_nature-kit.zip
+          mkdir -p /tmp/kenney-nature-kit godot/assets/environment/nature
+          unzip -q /tmp/kenney_nature-kit.zip -d /tmp/kenney-nature-kit
+          cp "/tmp/kenney-nature-kit/Models/GLTF format/tree_oak.glb" godot/assets/environment/nature/
+          cp "/tmp/kenney-nature-kit/Models/GLTF format/tree_default.glb" godot/assets/environment/nature/
+          cp "/tmp/kenney-nature-kit/License.txt" godot/assets/environment/nature/LICENSE.txt
+          cat godot/assets/environment/nature/LICENSE.txt >> godot/assets/THIRD_PARTY_LICENSES.txt
           test -s godot/assets/vehicles/race.glb
           test -s godot/assets/vehicles/Textures/colormap.png
           test -s godot/assets/environment/city/tree-large.glb
           test -s godot/assets/environment/city/building-type-a.glb
+          test -s godot/assets/environment/nature/tree_oak.glb
+          test -s godot/assets/environment/nature/tree_default.glb
       - name: Install matching Godot export templates
         run: |
           mkdir -p "$HOME/.local/share/godot/export_templates/4.3.stable"
