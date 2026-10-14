@@ -277,24 +277,25 @@ func _make_menu() -> void:
     menu_panel.z_index = 20
     add_child(menu_panel)
 
-    # Traffic-racer-inspired layout: keep the 3D road and car visible behind a sleek UI.
+    # Original racing-game menu with the familiar garage / play / settings flow.
+    # It uses our own layout and generated 3D scene rather than copied proprietary assets.
     var shade := ColorRect.new()
     shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    shade.color = Color(0.015, 0.025, 0.045, 0.58)
+    shade.color = Color(0.008, 0.018, 0.035, 0.38)
     menu_panel.add_child(shade)
 
     var top_bar := ColorRect.new()
     top_bar.anchor_right = 1.0
-    top_bar.anchor_bottom = 0.15
-    top_bar.color = Color(0.015, 0.025, 0.045, 0.82)
+    top_bar.anchor_bottom = 0.145
+    top_bar.color = Color(0.012, 0.025, 0.045, 0.92)
     menu_panel.add_child(top_bar)
 
     var title := Label.new()
     title.text = "OLD RACING"
-    title.anchor_left = 0.045
-    title.anchor_right = 0.52
-    title.anchor_top = 0.025
-    title.anchor_bottom = 0.095
+    title.anchor_left = 0.035
+    title.anchor_right = 0.38
+    title.anchor_top = 0.018
+    title.anchor_bottom = 0.085
     title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     title.add_theme_font_size_override("font_size", 38)
     title.add_theme_color_override("font_color", Color(1.0, 0.96, 0.82))
@@ -303,76 +304,116 @@ func _make_menu() -> void:
     title.add_theme_constant_override("shadow_offset_y", 2)
     menu_panel.add_child(title)
 
-    var edition := Label.new()
-    edition.text = "3D  •  HIGHWAY RACING"
-    edition.anchor_left = 0.047
-    edition.anchor_right = 0.55
-    edition.anchor_top = 0.085
-    edition.anchor_bottom = 0.135
-    edition.add_theme_font_size_override("font_size", 16)
-    edition.add_theme_color_override("font_color", Color(0.48, 0.84, 1.0))
-    menu_panel.add_child(edition)
+    var subtitle := Label.new()
+    subtitle.text = "HIGHWAY  •  TRAFFIC  •  SPEED"
+    subtitle.anchor_left = 0.04
+    subtitle.anchor_right = 0.40
+    subtitle.anchor_top = 0.078
+    subtitle.anchor_bottom = 0.13
+    subtitle.add_theme_font_size_override("font_size", 15)
+    subtitle.add_theme_color_override("font_color", Color(0.40, 0.80, 1.0))
+    menu_panel.add_child(subtitle)
 
-    # Right-side glass panel keeps the vehicle and scenery visible on the left.
-    var card := Panel.new()
-    card.anchor_left = 0.66
-    card.anchor_right = 0.965
-    card.anchor_top = 0.19
-    card.anchor_bottom = 0.94
-    var card_style := StyleBoxFlat.new()
-    card_style.bg_color = Color(0.025, 0.045, 0.075, 0.90)
-    card_style.border_color = Color(0.22, 0.62, 0.92, 0.85)
-    card_style.set_border_width_all(2)
-    card_style.set_corner_radius_all(14)
-    card.add_theme_stylebox_override("panel", card_style)
-    menu_panel.add_child(card)
+    var wallet := Panel.new()
+    wallet.anchor_left = 0.78
+    wallet.anchor_right = 0.965
+    wallet.anchor_top = 0.035
+    wallet.anchor_bottom = 0.115
+    var wallet_style := StyleBoxFlat.new()
+    wallet_style.bg_color = Color(0.04, 0.09, 0.14, 0.96)
+    wallet_style.border_color = Color(0.20, 0.62, 0.90, 0.9)
+    wallet_style.set_border_width_all(1)
+    wallet_style.set_corner_radius_all(10)
+    wallet.add_theme_stylebox_override("panel", wallet_style)
+    menu_panel.add_child(wallet)
+
+    var wallet_text := Label.new()
+    wallet_text.text = "●   %d" % coins
+    wallet_text.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    wallet_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    wallet_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    wallet_text.add_theme_font_size_override("font_size", 22)
+    wallet_text.add_theme_color_override("font_color", Color(1.0, 0.80, 0.16))
+    wallet.add_child(wallet_text)
+
+    var left_caption := Label.new()
+    left_caption.text = "YOUR RIDE"
+    left_caption.anchor_left = 0.055
+    left_caption.anchor_right = 0.38
+    left_caption.anchor_top = 0.22
+    left_caption.anchor_bottom = 0.29
+    left_caption.add_theme_font_size_override("font_size", 22)
+    left_caption.add_theme_color_override("font_color", Color(0.92, 0.97, 1.0))
+    menu_panel.add_child(left_caption)
+
+    var car_caption := Label.new()
+    car_caption.text = car_names[car_color_index]
+    car_caption.anchor_left = 0.055
+    car_caption.anchor_right = 0.43
+    car_caption.anchor_top = 0.29
+    car_caption.anchor_bottom = 0.35
+    car_caption.add_theme_font_size_override("font_size", 17)
+    car_caption.add_theme_color_override("font_color", Color(0.45, 0.82, 1.0))
+    menu_panel.add_child(car_caption)
+
+    var panel := Panel.new()
+    panel.anchor_left = 0.65
+    panel.anchor_right = 0.965
+    panel.anchor_top = 0.19
+    panel.anchor_bottom = 0.94
+    var panel_style := StyleBoxFlat.new()
+    panel_style.bg_color = Color(0.012, 0.03, 0.052, 0.91)
+    panel_style.border_color = Color(0.18, 0.50, 0.72, 0.88)
+    panel_style.set_border_width_all(2)
+    panel_style.set_corner_radius_all(14)
+    panel.add_theme_stylebox_override("panel", panel_style)
+    menu_panel.add_child(panel)
 
     var section := Label.new()
     section.text = "MAIN MENU"
-    section.anchor_left = 0.69
+    section.anchor_left = 0.68
     section.anchor_right = 0.94
-    section.anchor_top = 0.22
-    section.anchor_bottom = 0.29
+    section.anchor_top = 0.215
+    section.anchor_bottom = 0.28
     section.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     section.add_theme_font_size_override("font_size", 25)
     section.add_theme_color_override("font_color", Color(0.95, 0.98, 1.0))
     menu_panel.add_child(section)
 
     var hint := Label.new()
-    hint.text = "PICK A CAR. HIT THE ROAD."
-    hint.anchor_left = 0.685
-    hint.anchor_right = 0.945
-    hint.anchor_top = 0.29
-    hint.anchor_bottom = 0.34
+    hint.text = "CHOOSE YOUR NEXT DRIVE"
+    hint.anchor_left = 0.68
+    hint.anchor_right = 0.94
+    hint.anchor_top = 0.275
+    hint.anchor_bottom = 0.325
     hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     hint.add_theme_font_size_override("font_size", 12)
     hint.add_theme_color_override("font_color", Color(0.58, 0.76, 0.90))
     menu_panel.add_child(hint)
 
-    var start_button := _menu_button("▶   PLAY", 0.695, 0.37, 0.93, 0.49, 29, true)
+    var start_button := _menu_button("▶   PLAY", 0.69, 0.35, 0.93, 0.47, 28, true)
     start_button.pressed.connect(_start_game)
     menu_panel.add_child(start_button)
 
-    var garage_button := _menu_button("GARAGE  /  CHANGE CAR", 0.695, 0.515, 0.93, 0.605, 17, false)
+    var garage_button := _menu_button("GARAGE  /  CHANGE CAR", 0.69, 0.49, 0.93, 0.585, 16, false)
     garage_button.pressed.connect(_cycle_car_color)
     menu_panel.add_child(garage_button)
-
     car_color_button = garage_button
 
-    var upgrade_button := _menu_button("UPGRADES", 0.695, 0.625, 0.93, 0.715, 18, false)
+    var upgrade_button := _menu_button("UPGRADES", 0.69, 0.60, 0.93, 0.69, 17, false)
     upgrade_button.pressed.connect(_show_upgrades)
     menu_panel.add_child(upgrade_button)
 
-    control_mode_button = _menu_button("STEERING: BUTTONS", 0.695, 0.735, 0.93, 0.825, 16, false)
+    control_mode_button = _menu_button("STEERING: BUTTONS", 0.69, 0.705, 0.93, 0.795, 15, false)
     control_mode_button.pressed.connect(_toggle_control_mode)
     menu_panel.add_child(control_mode_button)
 
     var footer := Label.new()
     footer.text = "ENDLESS HIGHWAY  •  AVOID TRAFFIC"
-    footer.anchor_left = 0.69
-    footer.anchor_right = 0.94
-    footer.anchor_top = 0.855
-    footer.anchor_bottom = 0.91
+    footer.anchor_left = 0.675
+    footer.anchor_right = 0.945
+    footer.anchor_top = 0.83
+    footer.anchor_bottom = 0.90
     footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     footer.add_theme_font_size_override("font_size", 11)
     footer.add_theme_color_override("font_color", Color(0.57, 0.70, 0.81))
